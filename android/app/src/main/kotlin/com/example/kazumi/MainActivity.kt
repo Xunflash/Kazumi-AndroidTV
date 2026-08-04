@@ -1,9 +1,13 @@
 package com.example.kazumi
 
 import android.app.PendingIntent
+import android.app.ActivityManager
+import android.app.UiModeManager
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.res.Configuration
 import android.content.pm.PackageManager
 import android.app.RemoteAction
 import android.os.Build
@@ -89,6 +93,8 @@ class MainActivity: AudioServiceActivity() {
             } else if (call.method == "getAndroidSdkVersion") {
                 val sdkVersion = getAndroidSdkVersion()
                 result.success(sdkVersion)
+            } else if (call.method == "getAndroidDeviceProfile") {
+                result.success(getAndroidDeviceProfile())
             } else if (call.method == "enterFullscreen") {
                 enterAndroidFullscreen()
                 result.success(null)
@@ -157,6 +163,24 @@ class MainActivity: AudioServiceActivity() {
 
     private fun getAndroidSdkVersion(): Int {
         return Build.VERSION.SDK_INT
+    }
+
+    private fun getAndroidDeviceProfile(): Map<String, Any> {
+        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val uiModeManager = getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
+        val isTelevision =
+            uiModeManager.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION ||
+                packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+        return mapOf(
+            "isTelevision" to isTelevision,
+            "isLowRamDevice" to activityManager.isLowRamDevice,
+            "memoryClassMb" to activityManager.memoryClass,
+            "is64Bit" to if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                android.os.Process.is64Bit()
+            } else {
+                Build.SUPPORTED_64_BIT_ABIS.isNotEmpty()
+            }
+        )
     }
 
     private fun enterAndroidFullscreen() {

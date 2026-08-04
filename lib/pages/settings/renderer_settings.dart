@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kazumi/bean/appbar/sys_app_bar.dart';
+import 'package:kazumi/services/player/android_video_renderer_policy.dart';
 import 'package:kazumi/services/storage/storage.dart';
 import 'package:kazumi/utils/constants.dart';
 import 'package:kazumi/bean/settings/settings_list.dart';
@@ -13,7 +14,9 @@ class RendererSettings extends StatefulWidget {
 
 class _RendererSettingsState extends State<RendererSettings> {
   late final ValueNotifier<String> renderer = ValueNotifier<String>(
-    GStorage.getSetting<String>(SettingsKeys.androidVideoRenderer),
+    resolveAndroidVideoRenderer(
+      GStorage.getSetting<String>(SettingsKeys.androidVideoRenderer),
+    ),
   );
 
   @override

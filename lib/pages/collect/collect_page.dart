@@ -9,6 +9,7 @@ import 'package:kazumi/bean/card/bangumi_card.dart';
 import 'package:kazumi/pages/collect/collect_controller.dart';
 import 'package:kazumi/bean/appbar/sys_app_bar.dart';
 import 'package:kazumi/bean/widget/collect_button.dart';
+import 'package:kazumi/bean/widget/directional_floating_action_focus.dart';
 import 'package:kazumi/bean/widget/empty_state_widget.dart';
 import 'package:kazumi/modules/collect/collect_sync_plan.dart';
 import 'package:kazumi/services/storage/storage.dart';
@@ -31,6 +32,9 @@ class _CollectPageState extends State<CollectPage>
   TabController? tabController;
   bool showDelete = false;
   bool syncCollectiblesing = false;
+  final FocusNode _floatingActionFocusNode = FocusNode(
+    debugLabel: 'collect sync',
+  );
 
   Future<bool> _syncBangumiWithProgress({
     required GlobalKey<_FullSyncProgressDialogState> progressDialogKey,
@@ -144,6 +148,7 @@ class _CollectPageState extends State<CollectPage>
   @override
   void dispose() {
     tabController?.dispose();
+    _floatingActionFocusNode.dispose();
     super.dispose();
   }
 
@@ -157,75 +162,83 @@ class _CollectPageState extends State<CollectPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: SysAppBar(
-        needTopOffset: false,
-        toolbarHeight: 104,
-        bottom: TabBar(
-          controller: tabController,
-          tabs: tabs,
-          indicatorColor: Theme.of(context).colorScheme.primary,
+    return DirectionalFloatingActionFocus(
+      floatingActionFocusNode: _floatingActionFocusNode,
+      child: Scaffold(
+        appBar: SysAppBar(
+          needTopOffset: false,
+          toolbarHeight: 104,
+          bottom: TabBar(
+            controller: tabController,
+            tabs: tabs,
+            indicatorColor: Theme.of(context).colorScheme.primary,
+          ),
+          title: const Text('追番'),
+          actions: [
+            IconButton(
+                onPressed: () {
+                  setState(() {
+                    showDelete = !showDelete;
+                  });
+                },
+                icon: showDelete
+                    ? const Icon(Icons.edit_outlined)
+                    : const Icon(Icons.edit))
+          ],
         ),
-        title: const Text('追番'),
-        actions: [
-          IconButton(
-              onPressed: () {
-                setState(() {
-                  showDelete = !showDelete;
-                });
-              },
-              icon: showDelete
-                  ? const Icon(Icons.edit_outlined)
-                  : const Icon(Icons.edit))
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          bool webDavenable =
-              await GStorage.getSetting(SettingsKeys.webDavEnable);
-          bool webDavCollectEnable =
-              GStorage.getSetting(SettingsKeys.webDavEnableCollect);
-          bool bgmSyncEnable =
-              GStorage.getSetting(SettingsKeys.bangumiSyncEnable);
-          final syncPlan = CollectSyncPlan(
-            webDavEnabled: webDavenable,
-            webDavCollectiblesEnabled: webDavCollectEnable,
-            bangumiEnabled: bgmSyncEnable,
-          );
-          if (!syncPlan.canSync) {
-            KazumiDialog.showToast(message: '同步功能不可用，请至少开启一个同步功能');
-            return;
-          }
-          if (showDelete) {
-            KazumiDialog.showToast(message: '编辑模式无法执行同步');
-            return;
-          }
-          if (syncCollectiblesing) {
-            return;
-          }
-          setState(() {
-            syncCollectiblesing = true;
-          });
-          try {
-            await _runFullSync(
-              plan: syncPlan,
+        floatingActionButton: FloatingActionButton(
+          focusNode: _floatingActionFocusNode,
+          tooltip: '同步追番',
+          onPressed: () async {
+            bool webDavenable =
+                await GStorage.getSetting(SettingsKeys.webDavEnable);
+            bool webDavCollectEnable =
+                GStorage.getSetting(SettingsKeys.webDavEnableCollect);
+            bool bgmSyncEnable =
+                GStorage.getSetting(SettingsKeys.bangumiSyncEnable);
+            final syncPlan = CollectSyncPlan(
+              webDavEnabled: webDavenable,
+              webDavCollectiblesEnabled: webDavCollectEnable,
+              bangumiEnabled: bgmSyncEnable,
             );
-          } finally {
-            if (mounted) {
-              setState(() {
-                syncCollectiblesing = false;
-              });
+            if (!syncPlan.canSync) {
+              KazumiDialog.showToast(message: '同步功能不可用，请至少开启一个同步功能');
+              return;
             }
-          }
-        },
-        child: syncCollectiblesing
-            ? const SizedBox(
-                width: 32, height: 32, child: CircularProgressIndicator())
-            : const Icon(Icons.sync_rounded),
+            if (showDelete) {
+              KazumiDialog.showToast(message: '编辑模式无法执行同步');
+              return;
+            }
+            if (syncCollectiblesing) {
+              return;
+            }
+            setState(() {
+              syncCollectiblesing = true;
+            });
+            try {
+              await _runFullSync(
+                plan: syncPlan,
+              );
+            } finally {
+              if (mounted) {
+                setState(() {
+                  syncCollectiblesing = false;
+                });
+              }
+            }
+          },
+          child: syncCollectiblesing
+              ? const SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(),
+                )
+              : const Icon(Icons.sync_rounded),
+        ),
+        body: Observer(builder: (context) {
+          return renderBody;
+        }),
       ),
-      body: Observer(builder: (context) {
-        return renderBody;
-      }),
     );
   }
 

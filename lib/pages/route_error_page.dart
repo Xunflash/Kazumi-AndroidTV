@@ -13,7 +13,7 @@ class RouteErrorPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const SysAppBar(title: Text('Kazumi')),
+      appBar: const SysAppBar(title: Text('Kazumi TV')),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),

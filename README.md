@@ -1,30 +1,39 @@
-<div align=center>
+<div align="center">
 
-  <h1>Kazumi</h1>
+  <h1>Kazumi TV</h1>
 
-  <img src="assets/images/logo/logo_rounded.png" width=200></img>
+  <img src="assets/images/logo/logo_rounded.png" width="200" alt="Kazumi TV logo">
 
-  <a href="https://t.me/kazumi_app"><img src="https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white"></img></a>
+  <p>
+    <img src="https://img.shields.io/badge/Android_TV-adapted-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android TV adapted">
+    <img src="https://img.shields.io/badge/ARM-32%20bit%20%7C%2064%20bit-0091BD?style=for-the-badge&logo=arm&logoColor=white" alt="32-bit and 64-bit ARM">
+    <img src="https://img.shields.io/badge/Flutter-03A9F4?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter">
+  </p>
 
-  <img src="https://img.shields.io/badge/Flutter-03A9F4?style=for-the-badge&logo=flutter&logoColor=white"></img>
-  <img src="https://img.shields.io/badge/Dart-00B4AB?style=for-the-badge&logo=Dart&logoColor=white"></img>
-
-  <a href="https://trendshift.io/repositories/11432"><img src="https://trendshift.io/api/badge/trendshift/repositories/11432/yearly?language=Dart"></img></a>
-  <a href="https://hellogithub.com/repository/Predidit/Kazumi" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=68d824ea55ee4b07aba6fe1dd61ac939&claim_uid=J9Qu6aDd8LT1nU0"/></img></a>
-  
-  <p>使用 Flutter 开发的基于自定义规则的番剧采集与在线观看程序。使用最多五行基于 <code>Xpath</code> 语法的选择器构建自己的规则。支持规则导入与规则分享。支持基于 <code>Anime4K</code> 的实时超分辨率。绝赞开发中 (～￣▽￣)～</p>
+  <p>面向 Android TV 和 Google TV 的非官方 Kazumi 适配版，重点改善 32 位电视设备兼容性、遥控器导航、播放器操作与低性能设备体验。</p>
 </div>
 
+> [!IMPORTANT]
+> 本仓库是 [Kazumi 原项目](https://github.com/Predidit/Kazumi) 的非官方 Android TV 适配分支，并非原项目维护者发布的官方电视版本。遇到本分支特有的问题时，请在 [Xunflash/Kazumi](https://github.com/Xunflash/Kazumi/issues) 反馈，不要将其归因于上游项目。
 
+## Android TV 适配
 
-## 支持平台
+- **32 位 ARM 支持**：Release APK 同时包含 `armeabi-v7a` 和 `arm64-v8a`，覆盖仍在使用 32 位系统的电视与电视盒子。
+- **遥控器焦点导航**：补全主页、侧边导航、搜索与设置、详情页操作、悬浮按钮等区域的方向键焦点路径，并增强聚焦状态的可见性。
+- **播放器遥控操作**：支持方向键快进/快退及可配置步长；控制栏、顶部操作、选集和播放器功能按钮可通过方向键到达并确认执行。
+- **设置与文本输入**：改善播放器键位设置、WebDAV 配置、保存操作和返回键对软键盘的处理。
+- **电视性能优化**：针对低性能和低内存设备调整播放缓存、Android 视频渲染策略与部分动画效果。
+- **分支更新源**：由本仓库构建的安装包会从 [Xunflash/Kazumi Releases](https://github.com/Xunflash/Kazumi/releases) 检查和下载更新。
 
-- Android 10 及以上
-- Windows 10 及以上
-- MacOS 10.15 及以上
-- Linux (实验性)
-- iOS 13 及以上 (需要 [侧载](https://kazumi.app/docs/misc/how-to-install-in-ios))
-- HarmonyOS 5.0 及以上 (位于 [分支仓库](https://github.com/ErBWs/Kazumi/releases/latest)，需要 [侧载](https://kazumi.app/docs/misc/how-to-install-in-ohos))
+## AI 辅助说明
+
+本分支的主要 Android TV 适配由 **OpenAI Codex** 辅助完成，包括代码分析、实现、测试补充和构建验证。相关修改经过自动化测试与静态分析，但 AI 辅助和自动化测试不能替代真实电视设备验证。不同厂商遥控器键码、系统输入法、GPU 驱动和解码能力存在差异，发布前及反馈问题时仍应进行实机测试。
+
+## 兼容范围
+
+- 本分支的发布目标是 Android TV / Google TV，重点支持 ARM 32 位和 ARM 64 位设备。
+- 手机、桌面和其他平台的代码仍继承自上游，但不是此分支的主要适配与发布目标。
+- 原项目的跨平台版本、文档及支持范围请参阅 [Predidit/Kazumi](https://github.com/Predidit/Kazumi)。
 
 ## 屏幕截图 
 
@@ -42,6 +51,8 @@
 </table>
 
 ## 功能 / 开发计划
+
+以下核心功能继承自 Kazumi 原项目；本分支在此基础上维护 Android TV 适配。
 
 - [x] 规则编辑器
 - [x] 番剧目录
@@ -71,45 +82,26 @@
 
 ## 下载
 
-通过本页面 [Releases](https://github.com/Predidit/Kazumi/releases/latest) 选项卡下载：
+通过本仓库的 [Releases](https://github.com/Xunflash/Kazumi/releases/latest) 页面下载 Android TV APK：
 
-<a href="https://github.com/Predidit/Kazumi/releases">
+<a href="https://github.com/Xunflash/Kazumi/releases">
   <img src="static/svg/get_it_on_github.svg" alt="Get it on Github" width="200"/>
 </a>
 
-### Android
+Release APK 同时支持 `armeabi-v7a` 与 `arm64-v8a`。其他平台以及 F-Droid、Flathub、AUR 等发行渠道请使用 [上游项目的官方发布](https://github.com/Predidit/Kazumi/releases/latest)。
 
-<a href="https://f-droid.org/packages/com.predidit.kazumi">
-  <img src="https://fdroid.gitlab.io/artwork/badge/get-it-on-zh-hans.svg"
-  alt="Get it on F-Droid" width="200">
-</a>
+> [!NOTE]
+> Kazumi TV 无法使用上游项目的 Android 签名证书。首次从上游官方版或本地调试版切换到 Kazumi TV 正式版时，需要先卸载原安装；此后由本仓库同一正式证书签名的 Release 可以直接覆盖升级。卸载前请先备份需要保留的数据。
 
-### GNU/Linux
+## 上游同步与自动发布
 
-<a href="https://flathub.org/apps/io.github.Predidit.Kazumi">
-  <img src="https://flathub.org/api/badge?svg&locale=zh-Hans" alt="Get it on Flathub" width="175"/>
-</a>
+GitHub Actions 会在本分支 `main` 更新后、每天北京时间 04:23 以及手动触发时检查 [Predidit/Kazumi](https://github.com/Predidit/Kazumi) 的 `main` 分支。同步使用普通 merge commit，不会 reset 或强制推送；发生冲突时不会改动远端，而会保留冲突工件并创建 Issue。
 
-#### Arch Linux
-
-可以从 [AUR](http://aur.archlinux.org) 或 [archlinuxcn](https://github.com/archlinuxcn/repo) 安装。
-
-##### AUR
-
-```bash
-[yay/paru] -S kazumi # 从源码构建
-[yay/paru] -S kazumi-bin # 二进制包
-```
-
-##### archlinuxcn
-
-```bash
-sudo pacman -S kazumi
-```
+每个尚未发布的 fork 提交都会获得稳定的 TV 版本号。自动流程依次执行测试、静态分析、ARM 32/64 位构建、16 KB 对齐检查和正式签名校验，全部通过后才创建标签与 Release。构建失败或 APK 上传不完整时，后续同步会自动重试。首次启用和签名配置参见 [上游同步与发布配置](.github/UPSTREAM_SYNC.md)。
 
 ## 贡献
 
-欢迎向我们的 [规则仓库](https://github.com/Predidit/KazumiRules) 提交您的自定义规则。您可以自由选择是否在规则中留下您的ID。详细的规则编写教程可以参考 [规则开发文档](https://kazumi.app/docs/rules/develop-rules)
+欢迎向原项目的 [规则仓库](https://github.com/Predidit/KazumiRules) 提交您的自定义规则。您可以自由选择是否在规则中留下您的ID。详细的规则编写教程可以参考 [规则开发文档](https://kazumi.app/docs/rules/develop-rules)。Android TV 适配问题请提交到 [本分支 Issues](https://github.com/Xunflash/Kazumi/issues)。
 
 ## Q&A
 
@@ -170,7 +162,7 @@ A: 本项目编译需要良好的网络环境, 除了由 Google 托管的 Flutte
 
 ## 免责声明
 
-本项目基于 GNU 通用公共许可证第 3 版（GPL-3.0）授权。我们不对其适用性、可靠性或准确性作出任何明示或暗示的保证。在法律允许的最大范围内, 作者和贡献者不承担任何因使用本软件而产生的直接、间接、偶然、特殊或后果性的损害赔偿责任。
+本项目是 [Kazumi](https://github.com/Predidit/Kazumi) 的修改版本，继续依据仓库内的 [GNU 通用公共许可证第 3 版](LICENSE)（GPL-3.0）授权。原项目及其贡献者的版权与署名予以保留。我们不对其适用性、可靠性或准确性作出任何明示或暗示的保证。在法律允许的最大范围内, 作者和贡献者不承担任何因使用本软件而产生的直接、间接、偶然、特殊或后果性的损害赔偿责任。
 
 使用本项目需遵守所在地法律法规, 不得进行任何侵犯第三方知识产权的行为。因使用本项目而产生的数据和缓存应在24小时内清除, 超出 24 小时的使用需获得相关权利人的授权。
 
@@ -210,5 +202,3 @@ A: 本项目编译需要良好的网络环境, 除了由 Google 托管的 Flutte
 感谢 [avbuild](https://github.com/wang-bin/avbuild) 本项目使用了来自 avbuild 的树外补丁实现非标准视频流播放。
 
 感谢 [hive](https://github.com/isar/hive) 本项目持久化储存能力来自 hive。
-
-

@@ -1,6 +1,21 @@
 class ApiEndpoints {
+  static const String officialGithubRepository = 'Predidit/Kazumi';
+  static const String forkGithubRepository = 'Xunflash/Kazumi';
+
+  /// CI injects github.repository; local builds default to the Android TV fork.
+  static const String githubRepository = String.fromEnvironment(
+    'KAZUMI_GITHUB_REPOSITORY',
+    defaultValue: forkGithubRepository,
+  );
+
+  static const bool usesOfficialGithubRepository =
+      githubRepository == officialGithubRepository;
+
   /// 当前版本
-  static const String version = '2.2.6';
+  static const String version = String.fromEnvironment(
+    'KAZUMI_APP_VERSION',
+    defaultValue: '2.2.6',
+  );
 
   /// 规则API级别
   static const int apiLevel = 8;
@@ -9,7 +24,7 @@ class ApiEndpoints {
   static const String projectUrl = "https://kazumi.app/";
 
   /// Github 项目主页
-  static const String sourceUrl = "https://github.com/Predidit/Kazumi";
+  static const String sourceUrl = 'https://github.com/$githubRepository';
 
   /// 图标作者
   static const String iconUrl = "https://www.pixiv.net/users/66219277";
@@ -24,7 +39,10 @@ class ApiEndpoints {
 
   /// 在线升级
   static const String latestApp =
-      'https://api.github.com/repos/Predidit/Kazumi/releases/latest';
+      'https://api.github.com/repos/$githubRepository/releases/latest';
+
+  /// 浏览器可打开的最新版页面
+  static const String latestReleasePage = '$sourceUrl/releases/latest';
 
   /// Bangumi 镜像测试后端
   static const String bangumiMirrorDomain = 'https://api.kazumi.fyi';

@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:kazumi/utils/constants.dart';
+import 'package:kazumi/utils/device.dart';
 import 'package:kazumi/utils/image_extension.dart';
 import 'package:kazumi/services/logging/logger.dart';
 
@@ -18,6 +19,7 @@ class NetworkImgLayer extends StatelessWidget {
     this.filterQuality = FilterQuality.high,
     this.color,
     this.colorBlendMode,
+    this.reducedEffects,
   });
 
   final String? src;
@@ -31,6 +33,7 @@ class NetworkImgLayer extends StatelessWidget {
   final FilterQuality filterQuality;
   final Color? color;
   final BlendMode? colorBlendMode;
+  final bool? reducedEffects;
 
   static Widget heroFlightShuttleBuilder(
     BuildContext flightContext,
@@ -49,16 +52,24 @@ class NetworkImgLayer extends StatelessWidget {
 
     return InheritedTheme.captureAll(
       heroContext,
-      Material(
-        type: MaterialType.transparency,
-        child: hero.child,
-      ),
+      Material(type: MaterialType.transparency, child: hero.child),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final String imageUrl = src ?? '';
+    final bool useReducedEffects = reducedEffects ?? prefersReducedEffects();
+    final FilterQuality effectiveFilterQuality =
+        useReducedEffects && filterQuality != FilterQuality.none
+            ? FilterQuality.low
+            : filterQuality;
+    final Duration effectiveFadeOutDuration = useReducedEffects
+        ? Duration.zero
+        : fadeOutDuration ?? const Duration(milliseconds: 120);
+    final Duration effectiveFadeInDuration = useReducedEffects
+        ? Duration.zero
+        : fadeInDuration ?? const Duration(milliseconds: 120);
 
     //// We need this to shink memory usage
     int? memCacheWidth, memCacheHeight;
@@ -113,22 +124,23 @@ class NetworkImgLayer extends StatelessWidget {
               memCacheWidth: memCacheWidth,
               memCacheHeight: memCacheHeight,
               fit: BoxFit.cover,
-              fadeOutDuration:
-                  fadeOutDuration ?? const Duration(milliseconds: 120),
-              fadeInDuration:
-                  fadeInDuration ?? const Duration(milliseconds: 120),
-              filterQuality: filterQuality,
+              fadeOutDuration: effectiveFadeOutDuration,
+              fadeInDuration: effectiveFadeInDuration,
+              filterQuality: effectiveFilterQuality,
               color: color,
               colorBlendMode: colorBlendMode,
               errorListener: (e) {
-                KazumiLogger()
-                    .w("NetworkImage: network image load error", error: e);
+                KazumiLogger().w(
+                  "NetworkImage: network image load error",
+                  error: e,
+                );
               },
               errorWidget: (BuildContext context, String url, Object error) =>
                   placeholder(context),
               placeholder: (BuildContext context, String url) =>
                   placeholder(context),
-            ))
+            ),
+          )
         : placeholder(context);
   }
 
@@ -138,15 +150,16 @@ class NetworkImgLayer extends StatelessWidget {
       height: height,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .onInverseSurface
-            .withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(type == 'avatar'
-            ? 50
-            : type == 'emote'
-                ? 0
-                : StyleString.imgRadius.x),
+        color: Theme.of(
+          context,
+        ).colorScheme.onInverseSurface.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(
+          type == 'avatar'
+              ? 50
+              : type == 'emote'
+                  ? 0
+                  : StyleString.imgRadius.x,
+        ),
       ),
       child: type == 'bg'
           ? const SizedBox()

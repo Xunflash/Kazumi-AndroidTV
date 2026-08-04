@@ -90,7 +90,7 @@ final indexModule = createModule(
       ..route(
         '/error',
         child: (context, state) => Scaffold(
-          appBar: AppBar(title: const Text('Kazumi')),
+          appBar: AppBar(title: const Text('Kazumi TV')),
           body: const Center(child: Text('初始化失败')),
         ),
       )

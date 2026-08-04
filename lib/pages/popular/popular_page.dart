@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:kazumi/bean/widget/bangumi_mirror_error_widget.dart';
 import 'package:kazumi/bean/widget/custom_dropdown_menu.dart';
+import 'package:kazumi/bean/widget/directional_floating_action_focus.dart';
 import 'package:kazumi/modules/bangumi/bangumi_item.dart';
+import 'package:kazumi/pages/menu/menu_content_focus_entry.dart';
 import 'package:kazumi/pages/popular/popular_controller.dart';
 import 'package:kazumi/bean/card/bangumi_card.dart';
 import 'package:kazumi/utils/constants.dart';
@@ -28,6 +30,13 @@ class PopularPage extends StatefulWidget {
 
 class _PopularPageState extends State<PopularPage> {
   late final ScrollController scrollController;
+  final FocusNode _floatingActionFocusNode = FocusNode(
+    debugLabel: 'popular scroll to top',
+  );
+  final FocusNode _firstBangumiFocusNode = FocusNode(
+    debugLabel: 'popular first bangumi',
+  );
+  late final MenuContentFocusEntryNode _contentEntryFocusNode;
   PopularController get popularController => widget.controller;
 
   // Key used to position the dropdown menu for the tag selector
@@ -36,6 +45,10 @@ class _PopularPageState extends State<PopularPage> {
   @override
   void initState() {
     super.initState();
+    _contentEntryFocusNode = MenuContentFocusEntryNode(
+      targetFocusNode: _firstBangumiFocusNode,
+      debugLabel: 'popular content entry',
+    );
     scrollController = ScrollController(
       initialScrollOffset: popularController.scrollOffset,
     );
@@ -49,6 +62,9 @@ class _PopularPageState extends State<PopularPage> {
   void dispose() {
     scrollController.removeListener(scrollListener);
     scrollController.dispose();
+    _floatingActionFocusNode.dispose();
+    _contentEntryFocusNode.dispose();
+    _firstBangumiFocusNode.dispose();
     super.dispose();
   }
 
@@ -73,59 +89,79 @@ class _PopularPageState extends State<PopularPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: CustomScrollView(
-        controller: scrollController,
-        slivers: [
-          buildSliverAppBar(),
-          SliverToBoxAdapter(
-            child: Observer(
-              builder: (_) => AnimatedOpacity(
-                opacity: popularController.isLoadingMore ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 300),
-                child: popularController.isLoadingMore
-                    ? const LinearProgressIndicator(minHeight: 4)
-                    : const SizedBox(height: 4),
+    return DirectionalFloatingActionFocus(
+      floatingActionFocusNode: _floatingActionFocusNode,
+      child: Scaffold(
+        body: CustomScrollView(
+          controller: scrollController,
+          slivers: [
+            SliverToBoxAdapter(
+              child: Observer(
+                builder: (_) => popularController.isTimeOut
+                    ? const SizedBox.shrink()
+                    : Focus(
+                        focusNode: _contentEntryFocusNode,
+                        canRequestFocus: false,
+                        skipTraversal: true,
+                        child: const SizedBox.shrink(),
+                      ),
               ),
             ),
-          ),
-          SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                  StyleString.cardSpace, 0, StyleString.cardSpace, 0),
-              sliver: Observer(builder: (_) {
-                if (popularController.isTimeOut) {
-                  return SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: 400,
-                      child: BangumiMirrorErrorWidget(
-                        onRetry: () {
-                          if (popularController.trendList.isEmpty) {
-                            popularController.queryBangumiByTrend();
-                          } else {
-                            popularController.queryBangumiByTag();
-                          }
-                        },
-                        onSettingsReturned: () {
-                          if (mounted) {
-                            setState(() {});
-                          }
-                        },
+            buildSliverAppBar(),
+            SliverToBoxAdapter(
+              child: Observer(
+                builder: (_) => AnimatedOpacity(
+                  opacity: popularController.isLoadingMore ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: popularController.isLoadingMore
+                      ? const LinearProgressIndicator(minHeight: 4)
+                      : const SizedBox(height: 4),
+                ),
+              ),
+            ),
+            SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                    StyleString.cardSpace, 0, StyleString.cardSpace, 0),
+                sliver: Observer(builder: (_) {
+                  if (popularController.isTimeOut) {
+                    return SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: 400,
+                        child: BangumiMirrorErrorWidget(
+                          onRetry: () {
+                            if (popularController.trendList.isEmpty) {
+                              popularController.queryBangumiByTrend();
+                            } else {
+                              popularController.queryBangumiByTag();
+                            }
+                          },
+                          onSettingsReturned: () {
+                            if (mounted) {
+                              setState(() {});
+                            }
+                          },
+                        ),
                       ),
-                    ),
+                    );
+                  }
+                  return contentGrid(
+                    (popularController.currentTag == '')
+                        ? popularController.trendList
+                        : popularController.bangumiList,
                   );
-                }
-                return contentGrid(
-                  (popularController.currentTag == '')
-                      ? popularController.trendList
-                      : popularController.bangumiList,
-                );
-              })),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => scrollController.animateTo(0,
-            duration: const Duration(milliseconds: 350), curve: Curves.easeOut),
-        child: const Icon(Icons.arrow_upward),
+                })),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          focusNode: _floatingActionFocusNode,
+          tooltip: '返回顶部',
+          onPressed: () => scrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOut,
+          ),
+          child: const Icon(Icons.arrow_upward),
+        ),
       ),
     );
   }
@@ -155,7 +191,10 @@ class _PopularPageState extends State<PopularPage> {
         delegate: SliverChildBuilderDelegate(
           (BuildContext context, int index) {
             return bangumiList.isNotEmpty
-                ? BangumiCardV(bangumiItem: bangumiList[index])
+                ? BangumiCardV(
+                    bangumiItem: bangumiList[index],
+                    focusNode: index == 0 ? _firstBangumiFocusNode : null,
+                  )
                 : null;
           },
           childCount: bangumiList.isNotEmpty ? bangumiList.length : 10,

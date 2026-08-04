@@ -25,13 +25,16 @@ abstract class _HistoryController with Store {
     PlaybackHistoryIdentity identity,
     Duration progress, {
     Duration duration = Duration.zero,
+    bool refresh = true,
   }) async {
     await _historyRepository.updateHistory(
       identity: identity,
       progress: progress,
       duration: duration,
     );
-    init();
+    if (refresh) {
+      init();
+    }
   }
 
   Progress? lastWatching(

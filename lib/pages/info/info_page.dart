@@ -67,6 +67,9 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
   bool staffIsEmpty = false;
   bool _showBangumiInfoSkeleton = false;
   int _fabTabIndex = 0;
+  final FocusNode _primaryActionFocusNode = FocusNode(
+    debugLabel: 'info primary action',
+  );
 
   BangumiItem get inputBangumiIten => widget.inputBangumiItem;
 
@@ -306,6 +309,7 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
     infoController.pluginSearchResponseList.clear();
     sourceTabController.dispose();
     infoTabController.dispose();
+    _primaryActionFocusNode.dispose();
     super.dispose();
   }
 
@@ -503,16 +507,16 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
               );
             }),
           ),
-          floatingActionButton: showRatingFab
-              ? FloatingActionButton.extended(
-                  tooltip: '吐槽',
-                  onPressed: onBangumiRatingTap,
-                  label: const Text('发表吐槽'),
-                  icon: const Icon(Icons.rate_review_rounded),
-                )
-              : FloatingActionButton.extended(
-                  tooltip: '开始观看',
-                  onPressed: () {
+          floatingActionButton: InfoPrimaryActionButton(
+            focusNode: _primaryActionFocusNode,
+            tooltip: showRatingFab ? '吐槽' : '开始观看',
+            label: showRatingFab ? '发表吐槽' : '开始观看',
+            icon: showRatingFab
+                ? Icons.rate_review_rounded
+                : Icons.play_arrow_rounded,
+            onPressed: showRatingFab
+                ? onBangumiRatingTap
+                : () {
                     showAdaptiveBottomSheet<void>(
                       backgroundColor:
                           Theme.of(context).scaffoldBackgroundColor,
@@ -524,11 +528,39 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
                       },
                     );
                   },
-                  label: const Text('开始观看'),
-                  icon: const Icon(Icons.play_arrow_rounded),
-                ),
+          ),
         ),
       ),
+    );
+  }
+}
+
+class InfoPrimaryActionButton extends StatelessWidget {
+  const InfoPrimaryActionButton({
+    super.key,
+    required this.focusNode,
+    required this.tooltip,
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final FocusNode focusNode;
+  final String tooltip;
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FloatingActionButton.extended(
+      focusNode: focusNode,
+      autofocus:
+          MediaQuery.navigationModeOf(context) == NavigationMode.directional,
+      tooltip: tooltip,
+      onPressed: onPressed,
+      label: Text(label),
+      icon: Icon(icon),
     );
   }
 }

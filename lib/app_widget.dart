@@ -139,7 +139,9 @@ class _AppWidgetState extends State<AppWidget>
   /// indistinguishable from the page background. Rebuild the surface family
   /// from the dynamic primary when that happens.
   ColorScheme _completeDynamicScheme(
-      ColorScheme scheme, Brightness brightness) {
+    ColorScheme scheme,
+    Brightness brightness,
+  ) {
     if (scheme.surfaceContainerLow != scheme.surface) return scheme;
     final seeded = ColorScheme.fromSeed(
       seedColor: scheme.primary,
@@ -163,7 +165,7 @@ class _AppWidgetState extends State<AppWidget>
     Color? color,
     ColorScheme? colorScheme,
   }) {
-    return ThemeData(
+    final theme = ThemeData(
       useMaterial3: true,
       fontFamily: fontFamily,
       brightness: brightness,
@@ -174,6 +176,39 @@ class _AppWidgetState extends State<AppWidget>
       progressIndicatorTheme: progressIndicatorTheme2024,
       sliderTheme: sliderTheme2024,
       pageTransitionsTheme: pageTransitionsTheme2024,
+    );
+    if (!isAndroidTV()) {
+      return theme;
+    }
+
+    final focusColor = theme.colorScheme.onSurface.withValues(alpha: 0.32);
+    final focusedSide = WidgetStateProperty.resolveWith<BorderSide?>((states) {
+      return states.contains(WidgetState.focused)
+          ? BorderSide(
+              color: theme.colorScheme.onSurface,
+              width: 3,
+            )
+          : null;
+    });
+    final focusedOverlay = WidgetStateProperty.resolveWith<Color?>((states) {
+      return states.contains(WidgetState.focused) ? focusColor : null;
+    });
+    final tvButtonStyle = ButtonStyle(
+      side: focusedSide,
+      overlayColor: focusedOverlay,
+    );
+
+    return theme.copyWith(
+      focusColor: focusColor,
+      splashFactory: NoSplash.splashFactory,
+      iconButtonTheme: IconButtonThemeData(style: tvButtonStyle),
+      textButtonTheme: TextButtonThemeData(style: tvButtonStyle),
+      filledButtonTheme: FilledButtonThemeData(style: tvButtonStyle),
+      elevatedButtonTheme: ElevatedButtonThemeData(style: tvButtonStyle),
+      outlinedButtonTheme: OutlinedButtonThemeData(style: tvButtonStyle),
+      floatingActionButtonTheme: theme.floatingActionButtonTheme.copyWith(
+        focusColor: focusColor,
+      ),
     );
   }
 
@@ -226,46 +261,54 @@ class _AppWidgetState extends State<AppWidget>
       default:
         if (showingExitDialog) return;
         showingExitDialog = true;
-        KazumiDialog.show(onDismiss: () {
-          showingExitDialog = false;
-        }, builder: (context) {
-          bool saveExitBehavior = false; // 下次不再询问？
+        KazumiDialog.show(
+          onDismiss: () {
+            showingExitDialog = false;
+          },
+          builder: (context) {
+            bool saveExitBehavior = false; // 下次不再询问？
 
-          return AlertDialog(
-            title: const Text('退出确认'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text('您想要退出 Kazumi 吗？'),
-                const SizedBox(height: 24),
-                StatefulBuilder(builder: (context, setState) {
-                  onChanged(value) {
-                    saveExitBehavior = value ?? false;
-                    setState(() {});
-                  }
+            return AlertDialog(
+              title: const Text('退出确认'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('您想要退出 Kazumi TV 吗？'),
+                  const SizedBox(height: 24),
+                  StatefulBuilder(
+                    builder: (context, setState) {
+                      onChanged(value) {
+                        saveExitBehavior = value ?? false;
+                        setState(() {});
+                      }
 
-                  return Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 8,
-                    children: [
-                      Checkbox(value: saveExitBehavior, onChanged: onChanged),
-                      const Text('下次不再询问'),
-                    ],
-                  );
-                }),
-              ],
-            ),
-            actions: [
-              TextButton(
+                      return Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        children: [
+                          Checkbox(
+                            value: saveExitBehavior,
+                            onChanged: onChanged,
+                          ),
+                          const Text('下次不再询问'),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
                   onPressed: () async {
                     if (saveExitBehavior) {
                       await GStorage.putSetting(SettingsKeys.exitBehavior, 0);
                     }
                     exit(0);
                   },
-                  child: const Text('退出 Kazumi')),
-              TextButton(
+                  child: const Text('退出 Kazumi TV'),
+                ),
+                TextButton(
                   onPressed: () async {
                     if (saveExitBehavior) {
                       await GStorage.putSetting(SettingsKeys.exitBehavior, 1);
@@ -273,12 +316,16 @@ class _AppWidgetState extends State<AppWidget>
                     KazumiDialog.dismiss();
                     windowManager.hide();
                   },
-                  child: const Text('最小化至托盘')),
-              const TextButton(
-                  onPressed: KazumiDialog.dismiss, child: Text('取消')),
-            ],
-          );
-        });
+                  child: const Text('最小化至托盘'),
+                ),
+                const TextButton(
+                  onPressed: KazumiDialog.dismiss,
+                  child: Text('取消'),
+                ),
+              ],
+            );
+          },
+        );
     }
   }
 
@@ -289,11 +336,13 @@ class _AppWidgetState extends State<AppWidget>
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.paused) {
-      KazumiLogger()
-          .i("AppLifecycleState.paused: Application moved to background");
+      KazumiLogger().i(
+        "AppLifecycleState.paused: Application moved to background",
+      );
     } else if (state == AppLifecycleState.resumed) {
-      KazumiLogger()
-          .i("AppLifecycleState.resumed: Application moved to foreground");
+      KazumiLogger().i(
+        "AppLifecycleState.resumed: Application moved to foreground",
+      );
     } else if (state == AppLifecycleState.inactive) {
       KazumiLogger().i("AppLifecycleState.inactive: Application is inactive");
     }
@@ -304,7 +353,8 @@ class _AppWidgetState extends State<AppWidget>
     super.didChangePlatformBrightness();
     final ThemeProvider themeProvider = context.read<ThemeProvider>();
     KazumiLogger().i(
-        "Platform brightness changed, themeMode: ${themeProvider.themeMode}");
+      "Platform brightness changed, themeMode: ${themeProvider.themeMode}",
+    );
 
     _syncWindowsTitleBarBrightness(themeProvider);
   }
@@ -320,14 +370,16 @@ class _AppWidgetState extends State<AppWidget>
     }
 
     if (!Platform.isLinux) {
-      await trayManager.setToolTip('Kazumi');
+      await trayManager.setToolTip('Kazumi TV');
     }
 
-    Menu trayMenu = Menu(items: [
-      MenuItem(key: 'show_window', label: '显示窗口'),
-      MenuItem.separator(),
-      MenuItem(key: 'exit', label: '退出 Kazumi')
-    ]);
+    Menu trayMenu = Menu(
+      items: [
+        MenuItem(key: 'show_window', label: '显示窗口'),
+        MenuItem.separator(),
+        MenuItem(key: 'exit', label: '退出 Kazumi TV'),
+      ],
+    );
     await trayManager.setContextMenu(trayMenu);
   }
 
@@ -359,19 +411,50 @@ class _AppWidgetState extends State<AppWidget>
             : dynamicDarkTheme;
 
         return MaterialApp.router(
-          title: "Kazumi",
+          title: "Kazumi TV",
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
           supportedLocales: const [
             Locale.fromSubtags(
-                languageCode: 'zh', scriptCode: 'Hans', countryCode: "CN")
+              languageCode: 'zh',
+              scriptCode: 'Hans',
+              countryCode: "CN",
+            ),
           ],
           locale: const Locale.fromSubtags(
-              languageCode: 'zh', scriptCode: 'Hans', countryCode: "CN"),
+            languageCode: 'zh',
+            scriptCode: 'Hans',
+            countryCode: "CN",
+          ),
           theme: lightTheme,
           darkTheme: effectiveDarkTheme,
           themeMode: themeProvider.themeMode,
           scaffoldMessengerKey: rootScaffoldMessengerKey,
           routerConfig: ModularApp.routerConfigOf(context),
+          builder: (context, child) {
+            Widget content = child ?? const SizedBox.shrink();
+            final tv = isAndroidTV();
+            final reduceEffects = prefersReducedEffects();
+            if (reduceEffects) {
+              content = HeroMode(enabled: false, child: content);
+            }
+            if (!tv && !reduceEffects) {
+              return content;
+            }
+            final mediaQuery = MediaQuery.of(context);
+            return MediaQuery(
+              data: mediaQuery.copyWith(
+                navigationMode:
+                    tv ? NavigationMode.directional : mediaQuery.navigationMode,
+                disableAnimations: reduceEffects,
+              ),
+              child: tv
+                  ? FocusTraversalGroup(
+                      policy: ReadingOrderTraversalPolicy(),
+                      child: content,
+                    )
+                  : content,
+            );
+          },
         );
       },
     );

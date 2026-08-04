@@ -524,14 +524,18 @@ class SettingsTile<T> extends StatelessWidget {
               ],
               if (_kind == _TileKind.toggle) ...[
                 const SizedBox(width: 12),
-                Switch(
-                  value: initialValue ?? false,
-                  onChanged: enabled ? onToggle : null,
+                ExcludeFocus(
+                  child: Switch(
+                    value: initialValue ?? false,
+                    onChanged: enabled ? onToggle : null,
+                  ),
                 ),
               ],
               if (_kind == _TileKind.radio) ...[
                 const SizedBox(width: 12),
-                Radio<T>(value: radioValue as T, enabled: enabled),
+                ExcludeFocus(
+                  child: Radio<T>(value: radioValue as T, enabled: enabled),
+                ),
               ],
             ],
           ),

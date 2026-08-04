@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:kazumi/bean/widget/collect_button.dart';
 import 'package:kazumi/modules/bangumi/bangumi_item.dart';
+import 'package:kazumi/pages/collect/collect_controller.dart';
+
+bool isPlayerPanelMenuDismissKey(LogicalKeyboardKey key) {
+  return key == LogicalKeyboardKey.goBack ||
+      key == LogicalKeyboardKey.browserBack ||
+      key == LogicalKeyboardKey.gameButtonB ||
+      key == LogicalKeyboardKey.escape;
+}
 
 /// A one-shot lease that keeps the player panel visible until released.
 class PlayerPanelHold {
@@ -67,11 +76,22 @@ class _PlayerPanelHoldMouseRegionState
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: widget.cursor,
-      onEnter: (_) => _acquireHold(),
-      onExit: (_) => _releaseHold(),
-      child: widget.child,
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onFocusChange: (hasFocus) {
+        if (hasFocus) {
+          _acquireHold();
+        } else {
+          _releaseHold();
+        }
+      },
+      child: MouseRegion(
+        cursor: widget.cursor,
+        onEnter: (_) => _acquireHold(),
+        onExit: (_) => _releaseHold(),
+        child: widget.child,
+      ),
     );
   }
 }
@@ -102,8 +122,48 @@ class PlayerPanelHoldMenuAnchor extends StatefulWidget {
 }
 
 class _PlayerPanelHoldMenuAnchorState extends State<PlayerPanelHoldMenuAnchor> {
+  final MenuController _menuController = MenuController();
   PlayerPanelHold? _hold;
   bool _isOpen = false;
+  bool _keyHandlerRegistered = false;
+  bool _consumePairedSystemBack = false;
+
+  KeyEventResult _handleMenuKeyEvent(KeyEvent event) {
+    final route = ModalRoute.of(context);
+    if ((route != null && !route.isCurrent) ||
+        !_isOpen ||
+        event is! KeyDownEvent ||
+        !isPlayerPanelMenuDismissKey(event.logicalKey)) {
+      return KeyEventResult.ignored;
+    }
+    _closeMenuForBack();
+    return KeyEventResult.handled;
+  }
+
+  void _closeMenuForBack() {
+    _consumePairedSystemBack = true;
+    _menuController.close();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _consumePairedSystemBack = false;
+      }
+    });
+  }
+
+  Future<bool> _handleSystemBackButton() async {
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) {
+      return false;
+    }
+    if (_consumePairedSystemBack) {
+      return true;
+    }
+    if (!_menuController.isOpen) {
+      return false;
+    }
+    _closeMenuForBack();
+    return true;
+  }
 
   @override
   void dispose() {
@@ -115,7 +175,12 @@ class _PlayerPanelHoldMenuAnchorState extends State<PlayerPanelHoldMenuAnchor> {
     if (_isOpen) {
       return;
     }
-    _isOpen = true;
+    setState(() {
+      _isOpen = true;
+      _consumePairedSystemBack = false;
+    });
+    FocusManager.instance.addEarlyKeyEventHandler(_handleMenuKeyEvent);
+    _keyHandlerRegistered = true;
     widget.onVisibilityChanged(true);
     if (_hold?.isReleased == false) {
       return;
@@ -124,6 +189,10 @@ class _PlayerPanelHoldMenuAnchorState extends State<PlayerPanelHoldMenuAnchor> {
   }
 
   void _handleClose() {
+    if (_keyHandlerRegistered) {
+      FocusManager.instance.removeEarlyKeyEventHandler(_handleMenuKeyEvent);
+      _keyHandlerRegistered = false;
+    }
     if (_isOpen) {
       _isOpen = false;
       widget.onVisibilityChanged(false);
@@ -134,12 +203,18 @@ class _PlayerPanelHoldMenuAnchorState extends State<PlayerPanelHoldMenuAnchor> {
 
   @override
   Widget build(BuildContext context) {
-    return MenuAnchor(
-      consumeOutsideTap: widget.consumeOutsideTap,
-      onOpen: _handleOpen,
-      onClose: _handleClose,
-      builder: widget.builder,
-      menuChildren: widget.menuChildren,
+    return BackButtonListener(
+      // Rebuilding on open gives this listener priority over closed sibling
+      // menu anchors without replacing the MenuAnchor subtree.
+      onBackButtonPressed: () => _handleSystemBackButton(),
+      child: MenuAnchor(
+        controller: _menuController,
+        consumeOutsideTap: widget.consumeOutsideTap,
+        onOpen: _handleOpen,
+        onClose: _handleClose,
+        builder: widget.builder,
+        menuChildren: widget.menuChildren,
+      ),
     );
   }
 }
@@ -149,12 +224,16 @@ class PlayerPanelHoldCollectButton extends StatefulWidget {
     super.key,
     required this.acquirePlayerPanelHold,
     required this.bangumiItem,
+    required this.onVisibilityChanged,
     this.color = Colors.white,
+    this.collectController,
   });
 
   final PlayerPanelHold Function() acquirePlayerPanelHold;
   final BangumiItem bangumiItem;
+  final ValueChanged<bool> onVisibilityChanged;
   final Color color;
+  final CollectController? collectController;
 
   @override
   State<PlayerPanelHoldCollectButton> createState() =>
@@ -163,11 +242,52 @@ class PlayerPanelHoldCollectButton extends StatefulWidget {
 
 class _PlayerPanelHoldCollectButtonState
     extends State<PlayerPanelHoldCollectButton> {
+  final MenuController _menuController = MenuController();
   PlayerPanelHold? _hold;
+  bool _isOpen = false;
+  bool _keyHandlerRegistered = false;
+  bool _consumePairedSystemBack = false;
+
+  KeyEventResult _handleMenuKeyEvent(KeyEvent event) {
+    final route = ModalRoute.of(context);
+    if ((route != null && !route.isCurrent) ||
+        !_isOpen ||
+        event is! KeyDownEvent ||
+        !isPlayerPanelMenuDismissKey(event.logicalKey)) {
+      return KeyEventResult.ignored;
+    }
+    _closeMenuForBack();
+    return KeyEventResult.handled;
+  }
+
+  void _closeMenuForBack() {
+    _consumePairedSystemBack = true;
+    _menuController.close();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _consumePairedSystemBack = false;
+      }
+    });
+  }
+
+  Future<bool> _handleSystemBackButton() async {
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) {
+      return false;
+    }
+    if (_consumePairedSystemBack) {
+      return true;
+    }
+    if (!_menuController.isOpen) {
+      return false;
+    }
+    _closeMenuForBack();
+    return true;
+  }
 
   @override
   void dispose() {
-    _releaseHold();
+    _handleClose();
     super.dispose();
   }
 
@@ -183,13 +303,44 @@ class _PlayerPanelHoldCollectButtonState
     _hold = null;
   }
 
+  void _handleOpen() {
+    if (_isOpen) {
+      return;
+    }
+    setState(() {
+      _isOpen = true;
+      _consumePairedSystemBack = false;
+    });
+    FocusManager.instance.addEarlyKeyEventHandler(_handleMenuKeyEvent);
+    _keyHandlerRegistered = true;
+    widget.onVisibilityChanged(true);
+    _acquireHold();
+  }
+
+  void _handleClose() {
+    if (_keyHandlerRegistered) {
+      FocusManager.instance.removeEarlyKeyEventHandler(_handleMenuKeyEvent);
+      _keyHandlerRegistered = false;
+    }
+    if (_isOpen) {
+      _isOpen = false;
+      widget.onVisibilityChanged(false);
+    }
+    _releaseHold();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return CollectButton(
-      bangumiItem: widget.bangumiItem,
-      color: widget.color,
-      onOpen: _acquireHold,
-      onClose: _releaseHold,
+    return BackButtonListener(
+      onBackButtonPressed: _handleSystemBackButton,
+      child: CollectButton(
+        bangumiItem: widget.bangumiItem,
+        color: widget.color,
+        onOpen: _handleOpen,
+        onClose: _handleClose,
+        menuController: _menuController,
+        collectController: widget.collectController,
+      ),
     );
   }
 }

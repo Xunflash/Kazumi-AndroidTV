@@ -43,7 +43,11 @@ class _KeyboardSettingsPageState extends State<KeyboardSettingsPage> {
 
   late Map<String, List<String>> shortcuts;
 
-  final FocusNode focusNode = FocusNode();
+  final FocusNode _captureFocusNode = FocusNode(
+    debugLabel: 'keyboard shortcut capture',
+  );
+  FocusNode? _returnFocusNode;
+  bool _consumePairedSystemBack = false;
 
   bool get isListening => listeningFunction != null && listeningIndex != null;
 
@@ -76,15 +80,39 @@ class _KeyboardSettingsPageState extends State<KeyboardSettingsPage> {
 
   @override
   void dispose() {
-    cancelListening();
-    focusNode.dispose();
+    cancelListening(restoreFocus: false);
+    _captureFocusNode.dispose();
     super.dispose();
+  }
+
+  bool get _usesDirectionalNavigation =>
+      MediaQuery.maybeNavigationModeOf(context) == NavigationMode.directional;
+
+  bool _isRemoteCancelKey(LogicalKeyboardKey key) {
+    return key == LogicalKeyboardKey.goBack ||
+        key == LogicalKeyboardKey.browserBack ||
+        key == LogicalKeyboardKey.gameButtonB ||
+        key == LogicalKeyboardKey.escape;
+  }
+
+  void _restoreEditorFocus() {
+    final returnFocusNode = _returnFocusNode;
+    _returnFocusNode = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (returnFocusNode?.context != null &&
+          (returnFocusNode?.canRequestFocus ?? false)) {
+        returnFocusNode!.requestFocus();
+        return;
+      }
+      FocusScope.of(context).nextFocus();
+    });
   }
 
   /// Restores or removes the pending slot so no '...' placeholder is left
   /// behind when recording moves elsewhere. Pure state mutation: build-path
   /// callers wrap it in setState, dispose calls it bare.
-  void cancelListening() {
+  void cancelListening({bool restoreFocus = true}) {
     if (!isListening) return;
     final func = listeningFunction!;
     final keys = shortcuts[func]!;
@@ -100,17 +128,26 @@ class _KeyboardSettingsPageState extends State<KeyboardSettingsPage> {
     listeningFunction = null;
     listeningIndex = null;
     originalValue = '';
+    if (restoreFocus) {
+      _restoreEditorFocus();
+    } else {
+      _returnFocusNode = null;
+    }
   }
 
   void beginListening(String func, int index) {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    if (primaryFocus != null && primaryFocus != _captureFocusNode) {
+      _returnFocusNode = primaryFocus;
+    }
     originalValue = shortcuts[func]![index];
     shortcuts[func]![index] = '...';
     listeningFunction = func;
     listeningIndex = index;
 
-    Future.delayed(const Duration(milliseconds: 50), () {
-      if (!mounted) return;
-      focusNode.requestFocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !isListening) return;
+      _captureFocusNode.requestFocus();
     });
   }
 
@@ -141,6 +178,7 @@ class _KeyboardSettingsPageState extends State<KeyboardSettingsPage> {
       originalValue = '';
     });
     GStorage.putStringListSettingByName('shortcut_$func', shortcuts[func]!);
+    _restoreEditorFocus();
 
     return true;
   }
@@ -148,7 +186,7 @@ class _KeyboardSettingsPageState extends State<KeyboardSettingsPage> {
   // 新槽位不落盘：录制成功或取消时才持久化，storage 里永远没有占位符
   void onAddKey(String func) {
     setState(() {
-      cancelListening();
+      cancelListening(restoreFocus: false);
       final keys = shortcuts[func]!;
       keys.add('');
       beginListening(func, keys.length - 1);
@@ -162,7 +200,7 @@ class _KeyboardSettingsPageState extends State<KeyboardSettingsPage> {
     }
     final keyValue = shortcuts[func]![index];
     setState(() {
-      cancelListening();
+      cancelListening(restoreFocus: false);
       // 取消可能移除了同列表中的待录制项，按值重新定位（同一功能内按键唯一）
       final idx = shortcuts[func]!.indexOf(keyValue);
       if (idx >= 0) {
@@ -174,7 +212,7 @@ class _KeyboardSettingsPageState extends State<KeyboardSettingsPage> {
   void onRemoveKey(String func, int index) {
     final keyValue = shortcuts[func]![index];
     setState(() {
-      cancelListening();
+      cancelListening(restoreFocus: false);
       final keys = shortcuts[func]!;
       keys.remove(keyValue);
       GStorage.putStringListSettingByName('shortcut_$func', keys);
@@ -183,15 +221,51 @@ class _KeyboardSettingsPageState extends State<KeyboardSettingsPage> {
 
   void restoreDefaults() {
     setState(() {
-      listeningFunction = null;
-      listeningIndex = null;
-      originalValue = '';
+      cancelListening();
       for (final func in shortcuts.keys) {
         shortcuts[func] = defaultShortcuts[func]?.toList() ?? [];
         GStorage.putStringListSettingByName('shortcut_$func', shortcuts[func]!);
       }
     });
     KazumiDialog.showToast(message: '已恢复默认快捷键');
+  }
+
+  void _cancelListeningFromRemote() {
+    _consumePairedSystemBack = true;
+    setState(cancelListening);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _consumePairedSystemBack = false;
+      }
+    });
+  }
+
+  Future<bool> _handleSystemBackButton() async {
+    if (_consumePairedSystemBack) {
+      return true;
+    }
+    if (!isListening) {
+      return false;
+    }
+    setState(cancelListening);
+    return true;
+  }
+
+  KeyEventResult _handleCaptureKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent || !isListening) {
+      return KeyEventResult.ignored;
+    }
+    if (_usesDirectionalNavigation && _isRemoteCancelKey(event.logicalKey)) {
+      _cancelListeningFromRemote();
+      return KeyEventResult.handled;
+    }
+
+    final rawKey = event.logicalKey.keyLabel.isNotEmpty
+        ? event.logicalKey.keyLabel
+        : event.logicalKey.debugName ?? '';
+    return handleShortcutInput(rawKey)
+        ? KeyEventResult.handled
+        : KeyEventResult.ignored;
   }
 
   List<_ShortcutGroup> get displayGroups {
@@ -217,59 +291,50 @@ class _KeyboardSettingsPageState extends State<KeyboardSettingsPage> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return SettingsDetailScaffold(
-      title: const Text('操作设置'),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.settings_backup_restore_rounded),
-          tooltip: '恢复默认',
-          onPressed: restoreDefaults,
-        ),
-      ],
-      body: FocusScope(
-        autofocus: true,
-        child: Focus(
-          focusNode: focusNode,
-          autofocus: true,
-          canRequestFocus: true,
-          skipTraversal: true,
-          descendantsAreFocusable: true,
-          onKeyEvent: (node, event) {
-            if (event is! KeyDownEvent) return KeyEventResult.ignored;
-            if (!isListening) return KeyEventResult.ignored;
-
-            final rawKey = event.logicalKey.keyLabel.isNotEmpty
-                ? event.logicalKey.keyLabel
-                : event.logicalKey.debugName ?? '';
-
-            final handled = handleShortcutInput(rawKey);
-            return handled ? KeyEventResult.handled : KeyEventResult.ignored;
-          },
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1000),
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(
-                      '点按按键标签，再按下新按键完成修改',
-                      style: textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
+    return BackButtonListener(
+      onBackButtonPressed: _handleSystemBackButton,
+      child: SettingsDetailScaffold(
+        title: const Text('操作设置'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_backup_restore_rounded),
+            tooltip: '恢复默认',
+            onPressed: restoreDefaults,
+          ),
+        ],
+        body: FocusScope(
+          child: Focus(
+            focusNode: _captureFocusNode,
+            canRequestFocus: isListening,
+            skipTraversal: true,
+            descendantsAreFocusable: true,
+            onKeyEvent: _handleCaptureKeyEvent,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1000),
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        '点按按键标签，再按下新按键完成修改',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              for (final group in displayGroups)
-                Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1000),
-                    child: _buildGroupCard(group),
+                for (final group in displayGroups)
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1000),
+                      child: _buildGroupCard(group),
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -341,7 +406,10 @@ class _KeyboardSettingsPageState extends State<KeyboardSettingsPage> {
               children: [
                 for (int i = 0; i < keys.length; i++)
                   _buildKeyCap(func, keys, i),
-                _AddKeyButton(onTap: () => onAddKey(func)),
+                _AddKeyButton(
+                  key: ValueKey('shortcut-add-$func'),
+                  onTap: () => onAddKey(func),
+                ),
               ],
             ),
           ),
@@ -356,8 +424,10 @@ class _KeyboardSettingsPageState extends State<KeyboardSettingsPage> {
     // 否则单绑定时点「添加」会让原按键出现删除按钮，可被误删成空绑定
     final realCount = keys.where((value) => value != '...').length;
     return _KeyCap(
+      key: ValueKey('shortcut-$func-$i'),
       label: listening ? '按任意键' : keyAliases[keys[i]] ?? keys[i],
       listening: listening,
+      autofocus: _usesDirectionalNavigation && func == 'playorpause' && i == 0,
       onTap: () => onKeyCapTap(func, i),
       onDelete:
           realCount >= 2 && !listening ? () => onRemoveKey(func, i) : null,
@@ -369,14 +439,17 @@ class _KeyboardSettingsPageState extends State<KeyboardSettingsPage> {
 /// cancel. Shows a close icon when the function has spare bindings.
 class _KeyCap extends StatelessWidget {
   const _KeyCap({
+    super.key,
     required this.label,
     required this.listening,
+    required this.autofocus,
     required this.onTap,
     this.onDelete,
   });
 
   final String label;
   final bool listening;
+  final bool autofocus;
   final VoidCallback onTap;
   final VoidCallback? onDelete;
 
@@ -392,6 +465,7 @@ class _KeyCap extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
+        autofocus: autofocus,
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -409,12 +483,17 @@ class _KeyCap extends StatelessWidget {
               ),
               if (onDelete != null) ...[
                 const SizedBox(width: 4),
-                GestureDetector(
-                  onTap: onDelete,
-                  behavior: HitTestBehavior.opaque,
-                  child: Icon(
+                IconButton(
+                  onPressed: onDelete,
+                  tooltip: '删除按键',
+                  iconSize: 14,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 28,
+                    height: 28,
+                  ),
+                  padding: EdgeInsets.zero,
+                  icon: Icon(
                     Icons.close_rounded,
-                    size: 14,
                     color: colorScheme.onSurfaceVariant,
                   ),
                 ),
@@ -429,7 +508,7 @@ class _KeyCap extends StatelessWidget {
 
 /// Outlined pill that appends a new binding slot and starts recording.
 class _AddKeyButton extends StatelessWidget {
-  const _AddKeyButton({required this.onTap});
+  const _AddKeyButton({super.key, required this.onTap});
 
   final VoidCallback onTap;
 

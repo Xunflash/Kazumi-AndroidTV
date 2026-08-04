@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kazumi/bean/dialog/dialog_helper.dart';
 import 'package:kazumi/bean/appbar/sys_app_bar.dart';
+import 'package:kazumi/bean/widget/directional_floating_action_focus.dart';
 import 'package:kazumi/services/storage/storage.dart';
 import 'package:kazumi/services/network/proxy_utils.dart';
 import 'package:kazumi/services/network/proxy_manager.dart';
@@ -18,6 +19,9 @@ class _ProxyEditorPageState extends State<ProxyEditorPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController urlController = TextEditingController();
   final TextEditingController testUrlController = TextEditingController();
+  final FocusNode _floatingActionFocusNode = FocusNode(
+    debugLabel: 'proxy save and test',
+  );
 
   @override
   void initState() {
@@ -30,6 +34,7 @@ class _ProxyEditorPageState extends State<ProxyEditorPage> {
   void dispose() {
     urlController.dispose();
     testUrlController.dispose();
+    _floatingActionFocusNode.dispose();
     super.dispose();
   }
 
@@ -89,53 +94,58 @@ class _ProxyEditorPageState extends State<ProxyEditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const SysAppBar(title: Text('代理配置')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Center(
-          child: SizedBox(
-            width: (MediaQuery.of(context).size.width > 800) ? 800 : null,
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  TextFormField(
-                    controller: urlController,
-                    decoration: const InputDecoration(
-                      labelText: '代理地址',
-                      hintText: 'http://127.0.0.1:7890',
-                      border: OutlineInputBorder(),
+    return DirectionalFloatingActionFocus(
+      floatingActionFocusNode: _floatingActionFocusNode,
+      child: Scaffold(
+        appBar: const SysAppBar(title: Text('代理配置')),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Center(
+            child: SizedBox(
+              width: (MediaQuery.of(context).size.width > 800) ? 800 : null,
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: urlController,
+                      decoration: const InputDecoration(
+                        labelText: '代理地址',
+                        hintText: 'http://127.0.0.1:7890',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return '请输入代理地址';
+                        }
+                        if (!ProxyUtils.isValidProxyUrl(value)) {
+                          return '格式错误，请使用 http://host:port 格式';
+                        }
+                        return null;
+                      },
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return '请输入代理地址';
-                      }
-                      if (!ProxyUtils.isValidProxyUrl(value)) {
-                        return '格式错误，请使用 http://host:port 格式';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: testUrlController,
-                    decoration: const InputDecoration(
-                      labelText: '测试地址',
-                      hintText: 'https://www.google.com',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: testUrlController,
+                      decoration: const InputDecoration(
+                        labelText: '测试地址',
+                        hintText: 'https://www.google.com',
+                        border: OutlineInputBorder(),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: saveAndTest,
-        icon: const Icon(Icons.save),
-        label: const Text('保存并测试'),
+        floatingActionButton: FloatingActionButton.extended(
+          focusNode: _floatingActionFocusNode,
+          tooltip: '保存并测试',
+          onPressed: saveAndTest,
+          icon: const Icon(Icons.save),
+          label: const Text('保存并测试'),
+        ),
       ),
     );
   }

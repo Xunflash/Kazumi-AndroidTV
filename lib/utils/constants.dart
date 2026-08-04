@@ -79,7 +79,7 @@ const List<String> acceptLanguageList = [
 /// Bangumi API 文档要求的UA格式
 Map<String, String> bangumiHTTPHeader = {
   'user-agent':
-      'Predidit/Kazumi/${ApiEndpoints.version} (Android) (https://github.com/Predidit/Kazumi)',
+      '${ApiEndpoints.githubRepository}/${ApiEndpoints.version} (Android TV) (${ApiEndpoints.sourceUrl})',
   'referer': '',
   'content-type': 'application/json'
 };
@@ -115,9 +115,8 @@ const Map<String, String> hardwareDecodersList = {
 
 /// Android 可选视频渲染器
 const Map<String, String> androidVideoRenderersList = {
-  'auto': '自动选择',
+  'auto': '自动选择兼容的 OpenGL 渲染器',
   'gpu': '基于 OpenGL, 通用和稳健的选项',
-  'gpu-next': '基于 Vulkan, 在新设备上表现最好',
   'mediacodec_embed': '功耗最低，不支持超分辨率',
 };
 

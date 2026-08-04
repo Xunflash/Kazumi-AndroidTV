@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:antlr4/antlr4.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:kazumi/bean/widget/image_preview.dart';
+import 'package:kazumi/utils/device.dart';
+import 'package:kazumi/utils/image_extension.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'bbcode_base_listener.dart';
@@ -74,6 +76,10 @@ class _BBCodeWidgetState extends State<BBCodeWidget> {
         .whereType<BBCodeImg>()
         .map((e) => e.imageUrl)
         .toList();
+    final maxImageCacheWidth = MediaQuery.sizeOf(
+      context,
+    ).width.clamp(1, 960).cacheSize(context);
+    final reducedEffects = prefersReducedEffects();
     var imageIndex = 0;
 
     return Wrap(
@@ -127,7 +133,10 @@ class _BBCodeWidgetState extends State<BBCodeWidget> {
                 );
               } else if (e is BBCodeImg) {
                 final currentIndex = imageIndex++;
-                final heroTag = ImageViewer.heroTagFor(e.imageUrl, currentIndex);
+                final heroTag = ImageViewer.heroTagFor(
+                  e.imageUrl,
+                  currentIndex,
+                );
                 return WidgetSpan(
                   child: GestureDetector(
                     onTap: () => ImageViewer.show(
@@ -140,6 +149,16 @@ class _BBCodeWidgetState extends State<BBCodeWidget> {
                       tag: heroTag,
                       child: CachedNetworkImage(
                         imageUrl: e.imageUrl,
+                        memCacheWidth: maxImageCacheWidth,
+                        fadeInDuration: reducedEffects
+                            ? Duration.zero
+                            : const Duration(milliseconds: 120),
+                        fadeOutDuration: reducedEffects
+                            ? Duration.zero
+                            : const Duration(milliseconds: 120),
+                        filterQuality: reducedEffects
+                            ? FilterQuality.low
+                            : FilterQuality.medium,
                         placeholder: (context, url) =>
                             const SizedBox(width: 1, height: 1),
                         errorWidget: (context, error, stackTrace) {

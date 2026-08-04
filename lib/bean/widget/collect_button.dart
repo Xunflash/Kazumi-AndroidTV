@@ -10,6 +10,8 @@ class CollectButton extends StatefulWidget {
     this.color = Colors.white,
     this.onOpen,
     this.onClose,
+    this.menuController,
+    this.collectController,
   }) {
     isExtended = false;
   }
@@ -20,6 +22,8 @@ class CollectButton extends StatefulWidget {
     this.color = Colors.white,
     this.onOpen,
     this.onClose,
+    this.menuController,
+    this.collectController,
   }) {
     isExtended = true;
   }
@@ -29,6 +33,8 @@ class CollectButton extends StatefulWidget {
   late final bool isExtended;
   final void Function()? onOpen;
   final void Function()? onClose;
+  final MenuController? menuController;
+  final CollectController? collectController;
 
   @override
   State<CollectButton> createState() => _CollectButtonState();
@@ -41,11 +47,12 @@ class _CollectButtonState extends State<CollectButton> {
   // 4. 看过
   // 5. 抛弃
   late int collectType;
-  final CollectController collectController = inject<CollectController>();
+  late final CollectController collectController;
 
   @override
   void initState() {
     super.initState();
+    collectController = widget.collectController ?? inject<CollectController>();
   }
 
   String getTypeStringByInt(int collectType) {
@@ -86,6 +93,7 @@ class _CollectButtonState extends State<CollectButton> {
   Widget build(BuildContext context) {
     collectType = collectController.getCollectType(widget.bangumiItem);
     return MenuAnchor(
+      controller: widget.menuController,
       consumeOutsideTap: true,
       onClose: widget.onClose,
       onOpen: widget.onOpen,

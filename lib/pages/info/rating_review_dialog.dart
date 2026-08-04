@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:kazumi/modules/bangumi/bangumi_item.dart';
 import 'package:kazumi/modules/bangumi/bangumi_tag.dart';
@@ -19,8 +20,7 @@ class RatingReviewResult {
 }
 
 typedef RatingReviewSubmitCallback = Future<bool> Function(
-  RatingReviewResult result,
-);
+    RatingReviewResult result);
 
 class RatingReviewDialog extends StatefulWidget {
   const RatingReviewDialog({
@@ -100,6 +100,25 @@ class _RatingReviewDialogState extends State<RatingReviewDialog> {
   }
 
   String get scoreLabel => scoreLabels[score.clamp(0, 10)];
+
+  KeyEventResult _handleScoreKey(FocusNode node, KeyEvent event) {
+    if (_isSubmitting || (event is! KeyDownEvent && event is! KeyRepeatEvent)) {
+      return KeyEventResult.ignored;
+    }
+    final delta = switch (event.logicalKey) {
+      LogicalKeyboardKey.arrowLeft => -1,
+      LogicalKeyboardKey.arrowRight => 1,
+      _ => 0,
+    };
+    if (delta == 0) {
+      return KeyEventResult.ignored;
+    }
+    final newScore = (score + delta).clamp(0, 10);
+    if (newScore != score) {
+      setState(() => score = newScore);
+    }
+    return KeyEventResult.handled;
+  }
 
   void _setTagError(String? message) {
     if (_tagErrorText == message) return;
@@ -337,14 +356,12 @@ class _RatingReviewDialogState extends State<RatingReviewDialog> {
       child: Column(
         children: [
           _buildMainHeader(theme),
-
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
               child: _buildMainContent(theme),
             ),
           ),
-
           _buildActions(theme),
         ],
       ),
@@ -431,9 +448,7 @@ class _RatingReviewDialogState extends State<RatingReviewDialog> {
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text('我的评分', style: theme.textTheme.titleMedium),
-              ),
+              Expanded(child: Text('我的评分', style: theme.textTheme.titleMedium)),
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 160),
                 child: SizedBox(
@@ -456,29 +471,55 @@ class _RatingReviewDialogState extends State<RatingReviewDialog> {
           ),
           const SizedBox(height: 8),
           Center(
-            child: RatingBar(
-              initialRating: score / 2,
-              minRating: 0,
-              maxRating: 5,
-              allowHalfRating: true,
-              itemCount: 5,
-              itemSize: 36,
-              glow: false,
-              ignoreGestures: _isSubmitting,
-              ratingWidget: RatingWidget(
-                full: Icon(Icons.star_rounded, color: colorScheme.primary),
-                half: Icon(Icons.star_half_rounded, color: colorScheme.primary),
-                empty: Icon(
-                  Icons.star_outline_rounded,
-                  color: colorScheme.outline,
-                ),
+            child: Focus(
+              onKeyEvent: _handleScoreKey,
+              child: Builder(
+                builder: (context) {
+                  final focused = Focus.of(context).hasFocus;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color:
+                            focused ? colorScheme.primary : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                    child: RatingBar(
+                      initialRating: score / 2,
+                      minRating: 0,
+                      maxRating: 5,
+                      allowHalfRating: true,
+                      itemCount: 5,
+                      itemSize: 36,
+                      glow: false,
+                      ignoreGestures: _isSubmitting,
+                      ratingWidget: RatingWidget(
+                        full: Icon(
+                          Icons.star_rounded,
+                          color: colorScheme.primary,
+                        ),
+                        half: Icon(
+                          Icons.star_half_rounded,
+                          color: colorScheme.primary,
+                        ),
+                        empty: Icon(
+                          Icons.star_outline_rounded,
+                          color: colorScheme.outline,
+                        ),
+                      ),
+                      onRatingUpdate: (value) {
+                        final newScore = (value * 2).round().clamp(0, 10);
+                        if (newScore != score) {
+                          setState(() => score = newScore);
+                        }
+                      },
+                    ),
+                  );
+                },
               ),
-              onRatingUpdate: (value) {
-                final newScore = (value * 2).round().clamp(0, 10);
-                if (newScore != score) {
-                  setState(() => score = newScore);
-                }
-              },
             ),
           ),
         ],
@@ -496,9 +537,7 @@ class _RatingReviewDialogState extends State<RatingReviewDialog> {
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text('标签', style: theme.textTheme.titleMedium),
-              ),
+              Expanded(child: Text('标签', style: theme.textTheme.titleMedium)),
               Text(
                 '${selectedTags.length} / $_maxSelectedTags',
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -548,10 +587,7 @@ class _RatingReviewDialogState extends State<RatingReviewDialog> {
           color: theme.colorScheme.surfaceContainer,
           borderRadius: BorderRadius.circular(24),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: child,
-        ),
+        child: Padding(padding: const EdgeInsets.all(16), child: child),
       ),
     );
   }
@@ -585,8 +621,9 @@ class _RatingReviewDialogState extends State<RatingReviewDialog> {
                       width: 36,
                       height: 4,
                       decoration: BoxDecoration(
-                        color:
-                            colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                        color: colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.4,
+                        ),
                         borderRadius: BorderRadius.circular(99),
                       ),
                     ),

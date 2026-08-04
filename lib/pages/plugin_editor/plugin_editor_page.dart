@@ -7,6 +7,7 @@ import 'package:kazumi/plugins/api_rule_config.dart';
 import 'package:kazumi/plugins/anti_crawler_config.dart';
 import 'package:kazumi/plugins/plugins_controller.dart';
 import 'package:kazumi/bean/appbar/sys_app_bar.dart';
+import 'package:kazumi/bean/widget/directional_floating_action_focus.dart';
 import 'package:kazumi/pages/plugin_editor/editor_form_widgets.dart';
 import 'package:kazumi/request/config/api_endpoints.dart';
 import 'package:kazumi/services/plugin/api_rule_engine.dart';
@@ -151,6 +152,9 @@ class PluginEditorPage extends StatefulWidget {
 
 class _PluginEditorPageState extends State<PluginEditorPage> {
   PluginsController get pluginsController => widget.controller;
+  final FocusNode _floatingActionFocusNode = FocusNode(
+    debugLabel: 'plugin editor save',
+  );
   final TextEditingController nameController = TextEditingController();
   final TextEditingController versionController = TextEditingController();
   final TextEditingController userAgentController = TextEditingController();
@@ -388,6 +392,7 @@ class _PluginEditorPageState extends State<PluginEditorPage> {
     captchaButtonController.dispose();
     captchaDetectValueController.dispose();
     captchaScriptController.dispose();
+    _floatingActionFocusNode.dispose();
     super.dispose();
   }
 
@@ -399,120 +404,127 @@ class _PluginEditorPageState extends State<PluginEditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: SysAppBar(
-        title: const Text(_RuleEditorText.pageTitle),
-        actions: [
-          IconButton(
-            tooltip: _RuleEditorText.testRule,
-            icon: const Icon(Icons.bug_report_outlined),
-            onPressed: () {
-              final editedPlugin = _tryBuildEditedPlugin();
-              if (editedPlugin == null) return;
-              context.pushNamed(
-                '/settings/plugin/test',
-                arguments: editedPlugin,
-              );
-            },
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1000),
-            child: Column(
-              spacing: 16,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                EditorSectionCard(
-                  icon: Icons.badge_rounded,
-                  title: _RuleEditorText.sectionBasic,
-                  description: _RuleEditorText.sectionBasicDesc,
-                  children: [
-                    EditorTextField(
-                      controller: nameController,
-                      label: _RuleEditorText.ruleName,
-                    ),
-                    EditorTextField(
-                      controller: versionController,
-                      label: _RuleEditorText.ruleVersion,
-                    ),
-                    EditorTextField(
-                      controller: baseURLController,
-                      label: _RuleEditorText.baseUrl,
-                    ),
-                  ],
-                ),
-                EditorSectionCard(
-                  icon: Icons.search_rounded,
-                  title: _RuleEditorText.sectionSearch,
-                  description: _RuleEditorText.sectionSearchDesc,
-                  children: [
-                    EditorSegmentedField<String>(
-                      label: _RuleEditorText.searchRuleType,
-                      value: searchMode,
-                      segments: _ruleModeSegments,
-                      onChanged: (value) => setState(() => searchMode = value),
-                    ),
-                    EditorAnimatedSection(
-                      activeKey: searchMode,
-                      child: Column(
-                        spacing: 16,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: searchMode == RuleMode.xpath
-                            ? _buildXPathSearchFields()
-                            : _buildApiSearchFields(),
+    return DirectionalFloatingActionFocus(
+      floatingActionFocusNode: _floatingActionFocusNode,
+      child: Scaffold(
+        appBar: SysAppBar(
+          title: const Text(_RuleEditorText.pageTitle),
+          actions: [
+            IconButton(
+              tooltip: _RuleEditorText.testRule,
+              icon: const Icon(Icons.bug_report_outlined),
+              onPressed: () {
+                final editedPlugin = _tryBuildEditedPlugin();
+                if (editedPlugin == null) return;
+                context.pushNamed(
+                  '/settings/plugin/test',
+                  arguments: editedPlugin,
+                );
+              },
+            ),
+          ],
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1000),
+              child: Column(
+                spacing: 16,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  EditorSectionCard(
+                    icon: Icons.badge_rounded,
+                    title: _RuleEditorText.sectionBasic,
+                    description: _RuleEditorText.sectionBasicDesc,
+                    children: [
+                      EditorTextField(
+                        controller: nameController,
+                        label: _RuleEditorText.ruleName,
                       ),
-                    ),
-                  ],
-                ),
-                EditorSectionCard(
-                  icon: Icons.playlist_play_rounded,
-                  title: _RuleEditorText.sectionChapter,
-                  description: _RuleEditorText.sectionChapterDesc,
-                  children: [
-                    EditorSegmentedField<String>(
-                      label: _RuleEditorText.chapterRuleType,
-                      value: chapterMode,
-                      segments: _ruleModeSegments,
-                      onChanged: (value) => setState(() => chapterMode = value),
-                    ),
-                    EditorAnimatedSection(
-                      activeKey: chapterMode,
-                      child: Column(
-                        spacing: 16,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: chapterMode == RuleMode.xpath
-                            ? _buildXPathChapterFields()
-                            : _buildApiChapterFields(),
+                      EditorTextField(
+                        controller: versionController,
+                        label: _RuleEditorText.ruleVersion,
                       ),
-                    ),
-                  ],
-                ),
-                _buildAdvancedOptionsCard(),
-              ],
+                      EditorTextField(
+                        controller: baseURLController,
+                        label: _RuleEditorText.baseUrl,
+                      ),
+                    ],
+                  ),
+                  EditorSectionCard(
+                    icon: Icons.search_rounded,
+                    title: _RuleEditorText.sectionSearch,
+                    description: _RuleEditorText.sectionSearchDesc,
+                    children: [
+                      EditorSegmentedField<String>(
+                        label: _RuleEditorText.searchRuleType,
+                        value: searchMode,
+                        segments: _ruleModeSegments,
+                        onChanged: (value) =>
+                            setState(() => searchMode = value),
+                      ),
+                      EditorAnimatedSection(
+                        activeKey: searchMode,
+                        child: Column(
+                          spacing: 16,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: searchMode == RuleMode.xpath
+                              ? _buildXPathSearchFields()
+                              : _buildApiSearchFields(),
+                        ),
+                      ),
+                    ],
+                  ),
+                  EditorSectionCard(
+                    icon: Icons.playlist_play_rounded,
+                    title: _RuleEditorText.sectionChapter,
+                    description: _RuleEditorText.sectionChapterDesc,
+                    children: [
+                      EditorSegmentedField<String>(
+                        label: _RuleEditorText.chapterRuleType,
+                        value: chapterMode,
+                        segments: _ruleModeSegments,
+                        onChanged: (value) =>
+                            setState(() => chapterMode = value),
+                      ),
+                      EditorAnimatedSection(
+                        activeKey: chapterMode,
+                        child: Column(
+                          spacing: 16,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: chapterMode == RuleMode.xpath
+                              ? _buildXPathChapterFields()
+                              : _buildApiChapterFields(),
+                        ),
+                      ),
+                    ],
+                  ),
+                  _buildAdvancedOptionsCard(),
+                ],
+              ),
             ),
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: null,
-        icon: const Icon(Icons.save_rounded),
-        label: const Text(_RuleEditorText.save),
-        onPressed: () async {
-          final editedPlugin = _tryBuildEditedPlugin();
-          if (editedPlugin == null) return;
-          try {
-            await pluginsController.updatePlugin(editedPlugin);
-          } catch (error) {
-            _showEditorError(error);
-            return;
-          }
-          if (!context.mounted) return;
-          context.pop();
-        },
+        floatingActionButton: FloatingActionButton.extended(
+          heroTag: null,
+          focusNode: _floatingActionFocusNode,
+          tooltip: _RuleEditorText.save,
+          icon: const Icon(Icons.save_rounded),
+          label: const Text(_RuleEditorText.save),
+          onPressed: () async {
+            final editedPlugin = _tryBuildEditedPlugin();
+            if (editedPlugin == null) return;
+            try {
+              await pluginsController.updatePlugin(editedPlugin);
+            } catch (error) {
+              _showEditorError(error);
+              return;
+            }
+            if (!context.mounted) return;
+            context.pop();
+          },
+        ),
       ),
     );
   }

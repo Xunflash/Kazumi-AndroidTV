@@ -281,8 +281,12 @@ class _ThemeSettingsPageState extends State<ThemeSettingsPage> {
                               ...colorThemes.map(
                                 (e) {
                                   final index = colorThemes.indexOf(e);
-                                  return GestureDetector(
-                                    onTap: () {
+                                  return OutlinedButton(
+                                    autofocus: isAndroidTV() && index == 0,
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.all(6),
+                                    ),
+                                    onPressed: () {
                                       index == 0
                                           ? resetTheme()
                                           : setTheme(e['color']);

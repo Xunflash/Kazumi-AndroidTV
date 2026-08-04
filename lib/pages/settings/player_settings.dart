@@ -556,12 +556,12 @@ class _PlayerSettingsPageState extends State<PlayerSettingsPage> {
                 ),
                 SettingsSliderTile(
                   leading: Icons.swap_horiz_rounded,
-                  title: Text('方向键跳转'),
-                  description: Text('左右方向键的快进/快退秒数'),
+                  title: Text('遥控左右键跳转'),
+                  description: Text('每次快进/快退的秒数（0 表示不跳转）'),
                   value: playerArrowKeySkipTime.toDouble(),
                   min: 0,
-                  max: 15,
-                  divisions: 15,
+                  max: 60,
+                  divisions: 60,
                   valueLabel: '$playerArrowKeySkipTime 秒',
                   onChanged: (value) {
                     final newArrowKeySkipTime = value.toInt();

@@ -4,8 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:kazumi/bean/dialog/dialog_helper.dart';
 import 'package:kazumi/bean/widget/embedded_native_control_area.dart';
 import 'package:kazumi/navigation.dart';
+import 'package:kazumi/pages/menu/menu_content_focus_entry.dart';
 import 'package:kazumi/pages/menu/route_visibility.dart';
 import 'package:kazumi/pages/router.dart';
+import 'package:kazumi/utils/device.dart';
 
 class ScaffoldMenu extends StatefulWidget {
   const ScaffoldMenu({super.key});
@@ -14,8 +16,190 @@ class ScaffoldMenu extends StatefulWidget {
   State<ScaffoldMenu> createState() => _ScaffoldMenu();
 }
 
+class MenuDirectionalFocusBoundary extends StatefulWidget {
+  const MenuDirectionalFocusBoundary({
+    super.key,
+    required this.navigationRail,
+    required this.content,
+    required this.navigationEntryFocusNode,
+  });
+
+  final Widget navigationRail;
+  final Widget content;
+  final FocusNode navigationEntryFocusNode;
+
+  @override
+  State<MenuDirectionalFocusBoundary> createState() =>
+      _MenuDirectionalFocusBoundaryState();
+}
+
+class _MenuDirectionalFocusBoundaryState
+    extends State<MenuDirectionalFocusBoundary> {
+  final FocusScopeNode _navigationFocusScope = FocusScopeNode(
+    debugLabel: 'menu navigation rail',
+  );
+  final FocusScopeNode _contentFocusScope = FocusScopeNode(
+    debugLabel: 'menu content',
+  );
+  bool _contentFocusRequestPending = false;
+  bool _contentFocusCheckScheduled = false;
+  FocusNode? _pendingContentFocusOrigin;
+
+  @override
+  void dispose() {
+    _navigationFocusScope.dispose();
+    _contentFocusScope.dispose();
+    super.dispose();
+  }
+
+  bool _requestContentFocus() {
+    for (final entry in _contentFocusScope.descendants
+        .whereType<MenuContentFocusEntryNode>()) {
+      final entryContext = entry.context;
+      if (entryContext == null || !TickerMode.valuesOf(entryContext).enabled) {
+        continue;
+      }
+      final route = ModalRoute.of(entryContext);
+      if (route != null && !route.isCurrent) {
+        continue;
+      }
+      return entry.requestTargetFocus();
+    }
+
+    FocusNode? rememberedFocus = _contentFocusScope.focusedChild;
+    while (rememberedFocus is FocusScopeNode) {
+      rememberedFocus = rememberedFocus.focusedChild;
+    }
+    if (rememberedFocus != null &&
+        rememberedFocus.canRequestFocus &&
+        rememberedFocus.context != null &&
+        rememberedFocus.ancestors.contains(_contentFocusScope)) {
+      rememberedFocus.requestFocus();
+      return true;
+    }
+
+    // A FocusScope can be traversable itself even when the routed page has no
+    // actionable descendants yet. Do not park focus on that scope while an
+    // asynchronously loaded page is still empty.
+    final hasFocusableContent = _contentFocusScope.traversalDescendants.any(
+      (node) => node is! FocusScopeNode,
+    );
+    return hasFocusableContent && _contentFocusScope.nextFocus();
+  }
+
+  bool _focusIsInNavigation(FocusNode? focus) {
+    return focus == _navigationFocusScope ||
+        (focus?.ancestors.contains(_navigationFocusScope) ?? false);
+  }
+
+  void _cancelPendingContentFocus() {
+    _contentFocusRequestPending = false;
+    _pendingContentFocusOrigin = null;
+  }
+
+  void _schedulePendingContentFocusCheck() {
+    if (_contentFocusCheckScheduled) {
+      return;
+    }
+    _contentFocusCheckScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _contentFocusCheckScheduled = false;
+      if (!mounted || !_contentFocusRequestPending) {
+        return;
+      }
+
+      final primaryFocus = FocusManager.instance.primaryFocus;
+      if (primaryFocus != _pendingContentFocusOrigin ||
+          !_focusIsInNavigation(primaryFocus)) {
+        _cancelPendingContentFocus();
+        return;
+      }
+      if (_requestContentFocus()) {
+        _cancelPendingContentFocus();
+        return;
+      }
+
+      // Register one callback for the next real frame. This stays dormant
+      // while the app is idle and runs when async route content is rebuilt.
+      _schedulePendingContentFocusCheck();
+    });
+  }
+
+  void _requestOrDeferContentFocus(FocusNode origin) {
+    if (_requestContentFocus()) {
+      _cancelPendingContentFocus();
+      return;
+    }
+    _contentFocusRequestPending = true;
+    _pendingContentFocusOrigin = origin;
+    _schedulePendingContentFocusCheck();
+  }
+
+  Object? _handleDirectionalFocus(DirectionalFocusIntent intent) {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    final focusIsInNavigation = _focusIsInNavigation(primaryFocus);
+
+    if (focusIsInNavigation &&
+        intent.direction == TraversalDirection.right &&
+        primaryFocus != null) {
+      _requestOrDeferContentFocus(primaryFocus);
+      return null;
+    }
+
+    _cancelPendingContentFocus();
+
+    final moved = primaryFocus?.focusInDirection(intent.direction) ?? false;
+    if (moved ||
+        intent.direction != TraversalDirection.left ||
+        focusIsInNavigation) {
+      return null;
+    }
+
+    final rememberedFocus = _navigationFocusScope.focusedChild;
+    if (rememberedFocus != null && rememberedFocus.canRequestFocus) {
+      _navigationFocusScope.requestFocus();
+    } else if (widget.navigationEntryFocusNode.canRequestFocus) {
+      widget.navigationEntryFocusNode.requestFocus();
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final child = FocusTraversalGroup(
+      policy: ReadingOrderTraversalPolicy(),
+      child: Row(
+        children: [
+          FocusScope(
+            node: _navigationFocusScope,
+            child: widget.navigationRail,
+          ),
+          Expanded(
+            child: FocusScope(
+              node: _contentFocusScope,
+              child: widget.content,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (MediaQuery.navigationModeOf(context) != NavigationMode.directional) {
+      return child;
+    }
+    return Actions(
+      actions: <Type, Action<Intent>>{
+        DirectionalFocusIntent: CallbackAction<DirectionalFocusIntent>(
+          onInvoke: _handleDirectionalFocus,
+        ),
+      },
+      child: child,
+    );
+  }
+}
+
 class _ScaffoldMenu extends State<ScaffoldMenu> with RouteAware {
   final _outletKey = GlobalKey<RouterOutletState>();
+  final _searchFocusNode = FocusNode(debugLabel: 'menu search');
   DateTime? _lastExitPromptAt;
 
   /// The shell sits at the bottom of the root stack and stays mounted while
@@ -34,6 +218,7 @@ class _ScaffoldMenu extends State<ScaffoldMenu> with RouteAware {
   @override
   void dispose() {
     rootRouteObserver.unsubscribe(this);
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -166,47 +351,49 @@ class _ScaffoldMenu extends State<ScaffoldMenu> with RouteAware {
     );
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-      body: Row(
-        children: [
-          EmbeddedNativeControlArea(
-            child: NavigationRail(
-              backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-              groupAlignment: 1,
-              leading: FloatingActionButton(
-                elevation: 0,
-                heroTag: null,
-                onPressed: () => context.pushNamed('/search/'),
-                child: const Icon(Icons.search),
-              ),
-              labelType: NavigationRailLabelType.selected,
-              destinations: const <NavigationRailDestination>[
-                NavigationRailDestination(
-                  selectedIcon: Icon(Icons.home),
-                  icon: Icon(Icons.home_outlined),
-                  label: Text('推荐'),
-                ),
-                NavigationRailDestination(
-                  selectedIcon: Icon(Icons.timeline),
-                  icon: Icon(Icons.timeline_outlined),
-                  label: Text('时间表'),
-                ),
-                NavigationRailDestination(
-                  selectedIcon: Icon(Icons.favorite),
-                  icon: Icon(Icons.favorite_border),
-                  label: Text('追番'),
-                ),
-                NavigationRailDestination(
-                  selectedIcon: Icon(Icons.settings),
-                  icon: Icon(Icons.settings_outlined),
-                  label: Text('我的'),
-                ),
-              ],
-              selectedIndex: selectedIndex,
-              onDestinationSelected: _selectDestination,
+      body: MenuDirectionalFocusBoundary(
+        navigationEntryFocusNode: _searchFocusNode,
+        navigationRail: EmbeddedNativeControlArea(
+          child: NavigationRail(
+            backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+            groupAlignment: 1,
+            leading: FloatingActionButton(
+              elevation: 0,
+              heroTag: null,
+              focusNode: _searchFocusNode,
+              autofocus: isAndroidTV(),
+              tooltip: '搜索',
+              onPressed: () => context.pushNamed('/search/'),
+              child: const Icon(Icons.search),
             ),
+            labelType: NavigationRailLabelType.selected,
+            destinations: const <NavigationRailDestination>[
+              NavigationRailDestination(
+                selectedIcon: Icon(Icons.home),
+                icon: Icon(Icons.home_outlined),
+                label: Text('推荐'),
+              ),
+              NavigationRailDestination(
+                selectedIcon: Icon(Icons.timeline),
+                icon: Icon(Icons.timeline_outlined),
+                label: Text('时间表'),
+              ),
+              NavigationRailDestination(
+                selectedIcon: Icon(Icons.favorite),
+                icon: Icon(Icons.favorite_border),
+                label: Text('追番'),
+              ),
+              NavigationRailDestination(
+                selectedIcon: Icon(Icons.settings),
+                icon: Icon(Icons.settings_outlined),
+                label: Text('我的'),
+              ),
+            ],
+            selectedIndex: selectedIndex,
+            onDestinationSelected: _selectDestination,
           ),
-          Expanded(child: _outlet(context, borderRadius: borderRadius)),
-        ],
+        ),
+        content: _outlet(context, borderRadius: borderRadius),
       ),
     );
   }

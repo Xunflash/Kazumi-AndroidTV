@@ -22,9 +22,12 @@ import 'package:kazumi/navigation.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDeviceCapabilities();
   MediaKit.ensureInitialized();
   if (Platform.isAndroid || Platform.isIOS) {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setEnabledSystemUIMode(
+      isAndroidTV() ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
+    );
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       systemNavigationBarColor: Colors.transparent,
       systemNavigationBarDividerColor: Colors.transparent,
@@ -34,6 +37,16 @@ void main() async {
 
   if (Platform.isAndroid) {
     await WebViewFeatureService.initialize();
+  }
+
+  if (isAndroidTV()) {
+    FocusManager.instance.highlightStrategy =
+        FocusHighlightStrategy.alwaysTraditional;
+  }
+  if (isConstrainedAndroidDevice()) {
+    PaintingBinding.instance.imageCache
+      ..maximumSize = 200
+      ..maximumSizeBytes = 64 * 1024 * 1024;
   }
 
   try {
@@ -80,7 +93,7 @@ void main() async {
           ? TitleBarStyle.hidden
           : TitleBarStyle.normal,
       windowButtonVisibility: showWindowButton,
-      title: 'Kazumi',
+      title: 'Kazumi TV',
     );
     windowManager.waitUntilReadyToShow(windowOptions, () async {
       // window_manager controls desktop visibility to avoid startup flicker.

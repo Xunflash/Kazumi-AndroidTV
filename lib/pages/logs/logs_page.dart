@@ -5,6 +5,7 @@ import 'package:kazumi/bean/dialog/dialog_helper.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:kazumi/bean/appbar/sys_app_bar.dart';
+import 'package:kazumi/bean/widget/directional_floating_action_focus.dart';
 import 'package:kazumi/bean/widget/empty_state_widget.dart';
 
 class LogsPage extends StatefulWidget {
@@ -17,6 +18,8 @@ class LogsPage extends StatefulWidget {
 class _LogsPageState extends State<LogsPage> {
   final List<String> _logLines = [];
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _clearFocusNode = FocusNode(debugLabel: 'logs clear');
+  final FocusNode _copyFocusNode = FocusNode(debugLabel: 'logs copy');
 
   bool _isLoading = true;
   bool _hasError = false;
@@ -38,6 +41,8 @@ class _LogsPageState extends State<LogsPage> {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _clearFocusNode.dispose();
+    _copyFocusNode.dispose();
     super.dispose();
   }
 
@@ -155,12 +160,15 @@ class _LogsPageState extends State<LogsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const SysAppBar(
-        title: Text('日志'),
+    return DirectionalFloatingActionFocus(
+      floatingActionFocusNode: _clearFocusNode,
+      child: Scaffold(
+        appBar: const SysAppBar(
+          title: Text('日志'),
+        ),
+        body: buildBody,
+        floatingActionButton: buildFloatingButtons,
       ),
-      body: buildBody,
-      floatingActionButton: buildFloatingButtons,
     );
   }
 
@@ -222,6 +230,7 @@ class _LogsPageState extends State<LogsPage> {
       children: [
         FloatingActionButton(
           heroTag: null,
+          focusNode: _clearFocusNode,
           onPressed: _clearLogs,
           tooltip: '清空日志',
           child: const Icon(Icons.clear_all),
@@ -229,6 +238,7 @@ class _LogsPageState extends State<LogsPage> {
         const SizedBox(width: 15),
         FloatingActionButton(
           heroTag: null,
+          focusNode: _copyFocusNode,
           onPressed: _copyLogs,
           tooltip: '复制日志',
           child: const Icon(Icons.copy),

@@ -1,0 +1,260 @@
+name: Sync upstream and release Android TV
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.github/ISSUE_TEMPLATE/**'
+  schedule:
+    - cron: '23 20 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: upstream-sync-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  sync:
+    name: Merge Predidit/Kazumi into main
+    if: ${{ github.repository == 'Xunflash/Kazumi' }}
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.merge.outputs.changed }}
+      release_needed: ${{ steps.release-status.outputs.needed }}
+      release_commit: ${{ steps.metadata.outputs.release_commit }}
+      release_tag: ${{ steps.metadata.outputs.release_tag }}
+      release_version: ${{ steps.metadata.outputs.release_version }}
+      android_build_number: ${{ steps.metadata.outputs.android_build_number }}
+    steps:
+      - name: Check out fork main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Fetch upstream main branch
+        run: |
+          git remote add upstream https://github.com/Predidit/Kazumi.git
+          git fetch --no-tags upstream main
+        shell: bash
+      - name: Merge upstream
+        id: merge
+        continue-on-error: true
+        run: |
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Fork already contains upstream/main."
+            exit 0
+          fi
+
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git merge --no-ff --no-edit upstream/main
+        shell: bash
+      - name: Capture merge conflict details
+        if: ${{ always() && steps.merge.outcome == 'failure' }}
+        run: |
+          mkdir -p upstream-sync-conflict
+          git status --short > upstream-sync-conflict/status.txt
+          git diff --name-only --diff-filter=U > upstream-sync-conflict/files.txt
+          git ls-files -u > upstream-sync-conflict/index.txt
+          git diff > upstream-sync-conflict/conflict.diff
+          git log --oneline --decorate --graph -30 > upstream-sync-conflict/history.txt
+        shell: bash
+      - name: Upload merge conflict details
+        if: ${{ always() && steps.merge.outcome == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: upstream-sync-conflict-${{ github.run_number }}
+          path: upstream-sync-conflict
+          retention-days: 30
+      - name: Create or update conflict issue
+        if: ${{ always() && steps.merge.outcome == 'failure' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = 'Upstream sync requires conflict resolution';
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const body = [
+              `Automatic merge of \`Predidit/Kazumi:main\` into \`main\` failed.`,
+              '',
+              `Workflow run: ${runUrl}`,
+              '',
+              'Download the conflict artifact from the run, resolve the merge locally, and push the merge commit to `main`.'
+            ].join('\n');
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100
+            });
+            const existing = issues.find(issue => !issue.pull_request && issue.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body
+              });
+            } else {
+              await github.rest.issues.create({ owner, repo, title, body });
+            }
+      - name: Stop after merge conflict
+        if: ${{ always() && steps.merge.outcome == 'failure' }}
+        run: exit 1
+        shell: bash
+      - name: Push merged main branch
+        if: ${{ steps.merge.outputs.changed == 'true' }}
+        run: git push origin HEAD:refs/heads/main
+        shell: bash
+      - name: Determine deterministic release identity
+        id: metadata
+        run: |
+          upstream_pubspec="$(git show upstream/main:pubspec.yaml)"
+          version="$(printf '%s\n' "$upstream_pubspec" | sed -n 's/^version: \([0-9][0-9.]*\).*/\1/p' | head -n 1)"
+          upstream_build_number="$(printf '%s\n' "$upstream_pubspec" | sed -n 's/^version: [^+]*+\([0-9][0-9]*\).*/\1/p' | head -n 1)"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || [ -z "$upstream_build_number" ]; then
+            echo "Expected a three-part version and numeric build number in upstream pubspec.yaml" >&2
+            exit 1
+          fi
+
+          upstream_sha="$(git rev-parse upstream/main)"
+          release_commit="$(git rev-parse HEAD)"
+          release_short_sha="$(git rev-parse --short=12 HEAD)"
+          release_revision="$(git rev-list --count HEAD)"
+          release_version="${version}.${release_revision}"
+          release_tag="${release_version}-tv.${release_short_sha}"
+
+          version_revision=0
+          while IFS= read -r commit; do
+            commit_version="$(git show "$commit:pubspec.yaml" 2>/dev/null \
+              | sed -n 's/^version: \([0-9][0-9.]*\).*/\1/p' \
+              | head -n 1)"
+            [ "$commit_version" = "$version" ] || break
+            ((version_revision += 1))
+          done < <(git rev-list --first-parent HEAD)
+          if (( version_revision < 1 || version_revision > 999 )); then
+            echo "Version revision $version_revision is outside the supported range 1..999" >&2
+            exit 1
+          fi
+
+          IFS=. read -r major minor patch <<< "$version"
+          if (( 10#$major > 20 || 10#$minor > 99 || 10#$patch > 99 )); then
+            echo "Version $version exceeds the Android build-number mapping" >&2
+            exit 1
+          fi
+          android_build_number=$((
+            10#$major * 10000000 +
+            10#$minor * 100000 +
+            10#$patch * 1000 +
+            version_revision
+          ))
+          universal_version_code=$((android_build_number * 10 + 9))
+          upstream_universal_version_code=$((10#$upstream_build_number * 10 + 9))
+          if (( universal_version_code > 2100000000 )); then
+            echo "Universal Android version code $universal_version_code exceeds 2100000000" >&2
+            exit 1
+          fi
+          if (( universal_version_code <= upstream_universal_version_code )); then
+            echo "Universal Android version code $universal_version_code must exceed upstream $upstream_universal_version_code" >&2
+            exit 1
+          fi
+
+          echo "android_build_number=$android_build_number" >> "$GITHUB_OUTPUT"
+          echo "release_commit=$release_commit" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "release_version=$release_version" >> "$GITHUB_OUTPUT"
+          echo "Android build number: $android_build_number" >> "$GITHUB_STEP_SUMMARY"
+          echo "Android universal version code: $universal_version_code" >> "$GITHUB_STEP_SUMMARY"
+          echo "Upstream commit: $upstream_sha" >> "$GITHUB_STEP_SUMMARY"
+          echo "Release commit: $release_commit" >> "$GITHUB_STEP_SUMMARY"
+          echo "Release tag: $release_tag" >> "$GITHUB_STEP_SUMMARY"
+        shell: bash
+      - name: Check whether release already exists
+        id: release-status
+        uses: actions/github-script@v7
+        env:
+          EXPECTED_ASSET: Kazumi_android_${{ steps.metadata.outputs.release_tag }}_universal.apk
+          EXPECTED_COMMIT: ${{ steps.metadata.outputs.release_commit }}
+          RELEASE_TAG: ${{ steps.metadata.outputs.release_tag }}
+        with:
+          script: |
+            let tagCommit = null;
+            try {
+              const { data: ref } = await github.rest.git.getRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `tags/${process.env.RELEASE_TAG}`
+              });
+              let object = ref.object;
+              while (object.type === 'tag') {
+                const { data: tag } = await github.rest.git.getTag({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  tag_sha: object.sha
+                });
+                object = tag.object;
+              }
+              if (object.type !== 'commit') {
+                throw new Error(`Tag resolves to unexpected object type ${object.type}`);
+              }
+              tagCommit = object.sha;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+            if (tagCommit && tagCommit !== process.env.EXPECTED_COMMIT) {
+              throw new Error(
+                `Existing tag ${process.env.RELEASE_TAG} points to ${tagCommit}, ` +
+                `expected ${process.env.EXPECTED_COMMIT}`
+              );
+            }
+
+            try {
+              const { data: release } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: process.env.RELEASE_TAG
+              });
+              const hasExpectedAsset = release.assets.some(
+                asset => asset.name === process.env.EXPECTED_ASSET &&
+                  asset.state === 'uploaded' && asset.size > 0
+              );
+              const isPublishedStable = !release.draft && !release.prerelease;
+              if (hasExpectedAsset && isPublishedStable) {
+                core.info(`Release and expected APK already exist: ${release.html_url}`);
+                core.setOutput('needed', 'false');
+              } else {
+                core.warning(
+                  `Release is draft, prerelease, or missing ${process.env.EXPECTED_ASSET}; ` +
+                  'publishing will be retried.'
+                );
+                core.setOutput('needed', 'true');
+              }
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              core.info(`Release ${process.env.RELEASE_TAG} does not exist and will be built.`);
+              core.setOutput('needed', 'true');
+            }
+
+  release:
+    name: Build and publish Android TV release
+    needs: sync
+    if: ${{ needs.sync.outputs.release_needed == 'true' }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yaml
+    with:
+      releaseTag: ${{ needs.sync.outputs.release_tag }}
+      releaseCommit: ${{ needs.sync.outputs.release_commit }}
+      appVersion: ${{ needs.sync.outputs.release_version }}
+      androidBuildNumber: ${{ needs.sync.outputs.android_build_number }}
+      androidOnly: true
+    secrets: inherit

@@ -190,7 +190,22 @@ class AutoUpdater {
   }
 
   Future<Map<String, dynamic>> _latestRelease() async {
-    final raw = await _downloadClient.getPlain(ApiEndpoints.latestAppMirror);
+    try {
+      return await _downloadRelease(ApiEndpoints.latestApp);
+    } catch (e) {
+      if (!ApiEndpoints.usesOfficialGithubRepository) {
+        rethrow;
+      }
+      KazumiLogger().w(
+        'Update: GitHub API failed, falling back to official mirror',
+        error: e,
+      );
+      return _downloadRelease(ApiEndpoints.latestAppMirror);
+    }
+  }
+
+  Future<Map<String, dynamic>> _downloadRelease(String url) async {
+    final raw = await _downloadClient.getPlain(url);
     final data = json.decode(raw);
     if (data is! Map) {
       throw Exception('Invalid update response');
@@ -404,7 +419,7 @@ class AutoUpdater {
           selectedType == InstallationType.linuxTar) {
         String releaseUrl = updateInfo.releaseNotes;
         if (releaseUrl.isEmpty) {
-          releaseUrl = ApiEndpoints.latestApp;
+          releaseUrl = ApiEndpoints.latestReleasePage;
         }
         launchUrl(Uri.parse(releaseUrl), mode: LaunchMode.externalApplication);
         return;
