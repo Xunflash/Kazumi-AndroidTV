@@ -125,7 +125,15 @@ if [[ "${REQUIRE_RELEASE_SIGNATURE:-0}" == 1 ]]; then
 
   mapfile -t signer_digests < <(
     printf '%s\n' "$verification_output" \
-      | sed -n 's/^Signer #[0-9][0-9]* certificate SHA-256 digest: //p'
+      | awk '
+          /^Signer #[0-9]+ certificate SHA-256 digest: / ||
+          /^V[0-9]+([.][0-9]+)* Signer( #[0-9]+)?: certificate SHA-256 digest: / {
+            sub(/^.*certificate SHA-256 digest: /, "")
+            gsub(/[[:space:]:]/, "")
+            print tolower($0)
+          }
+        ' \
+      | sort -u
   )
   if (( ${#signer_digests[@]} != 1 )); then
     echo "Expected exactly one APK signer, found ${#signer_digests[@]}" >&2
