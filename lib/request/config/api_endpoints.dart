@@ -1,6 +1,6 @@
 class ApiEndpoints {
   static const String officialGithubRepository = 'Predidit/Kazumi';
-  static const String forkGithubRepository = 'Xunflash/Kazumi';
+  static const String forkGithubRepository = 'Xunflash/Kazumi-AndroidTV';
 
   /// CI injects github.repository; local builds default to the Android TV fork.
   static const String githubRepository = String.fromEnvironment(

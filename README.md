@@ -14,7 +14,7 @@
 </div>
 
 > [!IMPORTANT]
-> 本仓库是 [Kazumi 原项目](https://github.com/Predidit/Kazumi) 的非官方 Android TV 适配分支，并非原项目维护者发布的官方电视版本。遇到本分支特有的问题时，请在 [Xunflash/Kazumi](https://github.com/Xunflash/Kazumi/issues) 反馈，不要将其归因于上游项目。
+> 本仓库是 [Kazumi 原项目](https://github.com/Predidit/Kazumi) 的非官方 Android TV 适配分支，并非原项目维护者发布的官方电视版本。遇到本分支特有的问题时，请在 [Xunflash/Kazumi-AndroidTV](https://github.com/Xunflash/Kazumi-AndroidTV/issues) 反馈，不要将其归因于上游项目。
 
 ## Android TV 适配
 
@@ -23,7 +23,7 @@
 - **播放器遥控操作**：支持方向键快进/快退及可配置步长；控制栏、顶部操作、选集和播放器功能按钮可通过方向键到达并确认执行。
 - **设置与文本输入**：改善播放器键位设置、WebDAV 配置、保存操作和返回键对软键盘的处理。
 - **电视性能优化**：针对低性能和低内存设备调整播放缓存、Android 视频渲染策略与部分动画效果。
-- **分支更新源**：由本仓库构建的安装包会从 [Xunflash/Kazumi Releases](https://github.com/Xunflash/Kazumi/releases) 检查和下载更新。
+- **分支更新源**：由本仓库构建的安装包会从 [Xunflash/Kazumi-AndroidTV Releases](https://github.com/Xunflash/Kazumi-AndroidTV/releases) 检查和下载更新。
 
 ## AI 辅助说明
 
@@ -82,9 +82,9 @@
 
 ## 下载
 
-通过本仓库的 [Releases](https://github.com/Xunflash/Kazumi/releases/latest) 页面下载 Android TV APK：
+通过本仓库的 [Releases](https://github.com/Xunflash/Kazumi-AndroidTV/releases/latest) 页面下载 Android TV APK：
 
-<a href="https://github.com/Xunflash/Kazumi/releases">
+<a href="https://github.com/Xunflash/Kazumi-AndroidTV/releases">
   <img src="static/svg/get_it_on_github.svg" alt="Get it on Github" width="200"/>
 </a>
 
@@ -101,7 +101,7 @@ GitHub Actions 会在本分支 `main` 更新后、每天北京时间 04:23 以�
 
 ## 贡献
 
-欢迎向原项目的 [规则仓库](https://github.com/Predidit/KazumiRules) 提交您的自定义规则。您可以自由选择是否在规则中留下您的ID。详细的规则编写教程可以参考 [规则开发文档](https://kazumi.app/docs/rules/develop-rules)。Android TV 适配问题请提交到 [本分支 Issues](https://github.com/Xunflash/Kazumi/issues)。
+欢迎向原项目的 [规则仓库](https://github.com/Predidit/KazumiRules) 提交您的自定义规则。您可以自由选择是否在规则中留下您的ID。详细的规则编写教程可以参考 [规则开发文档](https://kazumi.app/docs/rules/develop-rules)。Android TV 适配问题请提交到 [本分支 Issues](https://github.com/Xunflash/Kazumi-AndroidTV/issues)。
 
 ## Q&A
 

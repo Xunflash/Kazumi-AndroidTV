@@ -63,10 +63,10 @@ keytool -genkeypair -v \
   -validity 10000
 
 base64 -w 0 kazumi-tv-release.p12 | \
-  gh secret set SIGNING_KEY_BASE64 --repo Xunflash/Kazumi
+  gh secret set SIGNING_KEY_BASE64 --repo Xunflash/Kazumi-AndroidTV
 printf '%s' 'kazumi-tv' | \
-  gh secret set KEY_ALIAS --repo Xunflash/Kazumi
-gh secret set KEY_STORE_PASSWORD --repo Xunflash/Kazumi
+  gh secret set KEY_ALIAS --repo Xunflash/Kazumi-AndroidTV
+gh secret set KEY_STORE_PASSWORD --repo Xunflash/Kazumi-AndroidTV
 keytool -list -v \
   -keystore kazumi-tv-release.p12 \
   -alias kazumi-tv

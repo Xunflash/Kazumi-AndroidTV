@@ -22,7 +22,7 @@ permissions:
 jobs:
   sync:
     name: Merge Predidit/Kazumi into main
-    if: ${{ github.repository == 'Xunflash/Kazumi' }}
+    if: ${{ github.repository == 'Xunflash/Kazumi-AndroidTV' }}
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.merge.outputs.changed }}
