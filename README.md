@@ -35,7 +35,7 @@
 - 手机、桌面和其他平台的代码仍继承自上游，但不是此分支的主要适配与发布目标。
 - 原项目的跨平台版本、文档及支持范围请参阅 [Predidit/Kazumi](https://github.com/Predidit/Kazumi)。
 
-## 屏幕截图 
+## 屏幕截图
 
 <table>
   <tr>
@@ -152,6 +152,10 @@ A: 本项目编译需要良好的网络环境, 除了由 Google 托管的 Flutte
 
 </details>
 
+## 开发
+
+欢迎您提交 PR！在开始之前, 请阅读 [贡献指引](static/doc/CONTRIBUTING.md) 以了解我们对 PR 和 AI 参与辅助开发的规定。
+
 ## 美术资源
 
 本项目图标来自 [Yuquanaaa](https://www.pixiv.net/users/66219277) 发表在 [Pixiv](https://www.pixiv.net/artworks/116666979) 上的作品。
@@ -171,15 +175,17 @@ A: 本项目编译需要良好的网络环境, 除了由 Google 托管的 Flutte
 我们不收集任何用户数据, 不使用任何遥测组件。
 
 ## 代码签名策略
+
 提交者: [贡献者](https://github.com/Predidit/Kazumi/graphs/contributors)
 审阅者: [所有者](https://github.com/Predidit)
 
 ## 赞助
 
-| ![signpath](https://signpath.org/assets/favicon-50x50.png) | Free code signing on Windows provided by [SignPath.io](https://about.signpath.io/), certficate by [SignPath Foundation](https://signpath.org/) |
-|------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| <img src="https://kilo.ai/favicon/favicon.svg" width="50"> | **Automatic PR review provided by [Kilo Code](https://kilo.ai/), sponsored by the [Kilo OSS Program](https://kilo.ai/oss)** |
-| <a href="https://m.do.co/c/0062035db3e4"><img src="https://opensource.nyc3.cdn.digitaloceanspaces.com/attribution/assets/SVG/DO_Logo_icon_blue.svg" width="50" height="50"></a> | **Cloud infrastructure is supported by [DigitalOcean](https://m.do.co/c/0062035db3e4)** |
+
+| ![signpath](https://signpath.org/assets/favicon-50x50.png)                                                                                                                      | Free code signing on Windows provided by[SignPath.io](https://about.signpath.io/), certficate by [SignPath Foundation](https://signpath.org/) |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| <img src="https://kilo.ai/favicon/favicon.svg" width="50">                                                                                                                      | **Automatic PR review provided by [Kilo Code](https://kilo.ai/), sponsored by the [Kilo OSS Program](https://kilo.ai/oss)**                   |
+| <a href="https://m.do.co/c/0062035db3e4"><img src="https://opensource.nyc3.cdn.digitaloceanspaces.com/attribution/assets/SVG/DO_Logo_icon_blue.svg" width="50" height="50"></a> | **Cloud infrastructure is supported by [DigitalOcean](https://m.do.co/c/0062035db3e4)**                                                       |
 
 ## 致谢
 

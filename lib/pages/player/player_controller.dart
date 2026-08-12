@@ -207,6 +207,7 @@ class PlayerController implements Disposable {
         params.adBlockerEnabled,
         canInstall: () => initialization.isActive,
         offset: params.offset,
+        videoSourceFormat: params.videoSourceFormat,
       );
     } catch (e) {
       if (initialization.isStale) {
