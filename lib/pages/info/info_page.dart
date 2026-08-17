@@ -52,7 +52,6 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
 
   InfoController get infoController => widget.infoController;
   PluginsController get pluginsController => widget.pluginsController;
-  late TabController sourceTabController;
   late TabController infoTabController;
   late bool showRating;
 
@@ -229,8 +228,6 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
         enforceMinimumLoadingDuration: true,
       );
     }
-    sourceTabController =
-        TabController(length: pluginsController.pluginList.length, vsync: this);
     infoTabController = TabController(length: _infoTabs.length, vsync: this);
     _fabTabIndex = infoTabController.index;
     showRating = GStorage.getSetting(SettingsKeys.showRating);
@@ -307,7 +304,6 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
     infoController.staffList.clear();
     infoController.clearRelations();
     infoController.pluginSearchResponseList.clear();
-    sourceTabController.dispose();
     infoTabController.dispose();
     _primaryActionFocusNode.dispose();
     super.dispose();
@@ -522,9 +518,7 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
                           Theme.of(context).scaffoldBackgroundColor,
                       context: context,
                       builder: (context) {
-                        return SourceSheet(
-                            tabController: sourceTabController,
-                            infoController: infoController);
+                        return SourceSheet(infoController: infoController);
                       },
                     );
                   },

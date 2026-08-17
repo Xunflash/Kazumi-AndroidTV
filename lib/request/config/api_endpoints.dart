@@ -11,10 +11,10 @@ class ApiEndpoints {
   static const bool usesOfficialGithubRepository =
       githubRepository == officialGithubRepository;
 
-  /// 当前版本
+  /// 当前版本。Release CI 注入四段 TV 版本号；本地构建回落到 pubspec 主版本。
   static const String version = String.fromEnvironment(
     'KAZUMI_APP_VERSION',
-    defaultValue: '2.2.6',
+    defaultValue: '2.2.8',
   );
 
   /// 规则API级别
@@ -79,6 +79,9 @@ class ApiEndpoints {
   /// 从条目ID获取角色信息
   static const String bangumiCharacterByID = '/v0/subjects/{0}/characters';
 
+  /// 从条目ID获取工作人员信息
+  static const String bangumiStaffByID = '/v0/subjects/{0}/persons';
+
   /// 从条目ID获取剧集ID
   static const String bangumiEpisodeByID = '/v0/episodes';
 
@@ -127,9 +130,6 @@ class ApiEndpoints {
   /// 番剧角色评论
   static const String bangumiCharacterCommentsByIDNext =
       '/p1/characters/{0}/comments';
-
-  /// 番剧工作人员信息
-  static const String bangumiStaffByIDNext = '/p1/subjects/{0}/staffs/persons';
 
   /// DanDanPlay API Domain
   static const String dandanAPIDomain = 'https://api.dandanplay.net';

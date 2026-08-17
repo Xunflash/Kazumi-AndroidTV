@@ -28,7 +28,7 @@ void main() {
   test('uses the compile-time Android TV app version', () {
     const configuredVersion = String.fromEnvironment(
       'KAZUMI_APP_VERSION',
-      defaultValue: '2.2.6',
+      defaultValue: '2.2.8',
     );
     expect(ApiEndpoints.version, configuredVersion);
   });

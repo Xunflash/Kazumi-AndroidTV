@@ -133,11 +133,10 @@ class _AppWidgetState extends State<AppWidget>
     return Color(int.parse(defaultThemeColor, radix: 16));
   }
 
-  /// dynamic_color builds its ColorScheme from the legacy CorePalette path,
-  /// which leaves the surfaceContainer* roles unset. ColorScheme then falls
-  /// back to `surface` for all of them, so cards and other containers become
-  /// indistinguishable from the page background. Rebuild the surface family
-  /// from the dynamic primary when that happens.
+  /// dynamic_color can still build ColorScheme from the legacy CorePalette
+  /// path on some Android TV devices, leaving surfaceContainer* roles unset.
+  /// ColorScheme then falls back to `surface` for all of them, so cards and
+  /// other containers become indistinguishable from the page background.
   ColorScheme _completeDynamicScheme(
     ColorScheme scheme,
     Brightness brightness,

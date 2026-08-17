@@ -20,8 +20,8 @@ Release contains the expected APK asset. Therefore a later scheduled or manual
 run retries a missing Release or missing upload even when there is no new merge.
 
 If the merge conflicts, nothing is pushed. The workflow uploads the conflict
-status and diff for 30 days and creates or updates an issue linking to the failed
-run.
+status and diff for 30 days and, when Issues are enabled, creates or updates an
+issue linking to the failed run.
 
 ## Repository configuration
 
