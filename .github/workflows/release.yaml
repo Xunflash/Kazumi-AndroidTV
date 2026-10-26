@@ -149,6 +149,8 @@
               distribution: 'temurin'          
           - name: Setup Android SDK
             uses: android-actions/setup-android@v3
+            with:
+              packages: 'platform-tools'
           - name: Install Android 16 KB alignment tools
             run: sdkmanager "build-tools;35.0.0"
             shell: bash
@@ -746,6 +748,8 @@
               distribution: 'temurin'
           - name: Setup Android SDK
             uses: android-actions/setup-android@v3
+            with:
+              packages: 'platform-tools'
           - name: Setup Android build tools
             run: sdkmanager "build-tools;34.0.0" "build-tools;35.0.0"
           - name: Check Android signing configuration
