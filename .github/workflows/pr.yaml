@@ -74,6 +74,11 @@
           - name: Get Flutter dependencies
             run: flutter pub get
             shell: bash
+          - name: Install native build tools
+            run: |
+              sudo apt-get update
+              sudo apt-get install -y cmake ninja-build g++
+            shell: bash
           - name: Run Flutter tests
             run: flutter test --concurrency=1
             shell: bash
@@ -247,6 +252,8 @@
               channel: stable
               flutter-version-file: pubspec.yaml
           - run: flutter pub get
+          - name: Install native build tools
+            run: brew install cmake ninja
           - name: Build IPA
             run: >-
               flutter build ios --release --no-codesign
@@ -283,6 +290,8 @@
               channel: stable
               flutter-version-file: pubspec.yaml
           - run: flutter pub get
+          - name: Install native build tools
+            run: brew install cmake ninja
           - run: >-
               flutter build macos --release
               --dart-define=DANDANAPI_APPID=$DANDANAPI_APPID
@@ -385,7 +394,8 @@
               Homepage: https://github.com/${{ github.repository }}
               Depends: libayatana-appindicator3-1,
                        gir1.2-ayatanaappindicator3-0.1,
-                       libwebkit2gtk-4.1-0
+                       libwebkit2gtk-4.1-0,
+                       libva-wayland2
               EOF
 
               cp ../assets/linux/io.github.Predidit.Kazumi.desktop usr/share/applications
@@ -467,7 +477,8 @@
               Homepage: https://github.com/${{ github.repository }}
               Depends: libayatana-appindicator3-1,
                        gir1.2-ayatanaappindicator3-0.1,
-                       libwebkit2gtk-4.1-0
+                       libwebkit2gtk-4.1-0,
+                       libva-wayland2
               EOF
 
               cp ../assets/linux/io.github.Predidit.Kazumi.desktop usr/share/applications

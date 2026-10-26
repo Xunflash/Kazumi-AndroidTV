@@ -97,7 +97,14 @@ Release APK 同时支持 `armeabi-v7a` 与 `arm64-v8a`。其他平台以及 F-Dr
 
 GitHub Actions 会在本分支 `main` 更新后、每天北京时间 04:23 以及手动触发时检查 [Predidit/Kazumi](https://github.com/Predidit/Kazumi) 的 `main` 分支。同步使用普通 merge commit，不会 reset 或强制推送；发生冲突时不会改动远端，而会保留冲突工件并创建 Issue。
 
-每个尚未发布的 fork 提交都会获得稳定的 TV 版本号。自动流程依次执行测试、静态分析、ARM 32/64 位构建、16 KB 对齐检查和正式签名校验，全部通过后才创建标签与 Release。构建失败或 APK 上传不完整时，后续同步会自动重试。首次启用和签名配置参见 [上游同步与发布配置](.github/UPSTREAM_SYNC.md)。
+同步会跟上上游的每一次提交，但只有上游发布新版本时才打一个对应的 Android TV Release，标签形如 `2.4.2-tv`。两次上游版本之间的提交不会各自再发一版。自动流程依次执行测试、静态分析、ARM 32/64 位构建、16 KB 对齐检查和正式签名校验，全部通过后才创建标签与 Release。构建失败或 APK 上传不完整时，后续同步会自动重试。首次启用和签名配置参见 [上游同步与发布配置](.github/UPSTREAM_SYNC.md)。
+
+其他平台的安装方式跟随上游，例如 Arch Linux 可以从 [AUR](http://aur.archlinux.org) 安装：
+
+```bash
+[yay/paru] -S kazumi # 从源码构建
+[yay/paru] -S kazumi-bin # 二进制包
+```
 
 ## 贡献
 
@@ -177,9 +184,10 @@ A: 本项目编译需要良好的网络环境, 除了由 Google 托管的 Flutte
 ## 赞助
 
 | ![signpath](https://signpath.org/assets/favicon-50x50.png) | Free code signing on Windows provided by [SignPath.io](https://about.signpath.io/), certficate by [SignPath Foundation](https://signpath.org/) |
-|------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| --- | --- |
 | <img src="https://kilo.ai/favicon/favicon.svg" width="50"> | **Automatic PR review provided by [Kilo Code](https://kilo.ai/), sponsored by the [Kilo OSS Program](https://kilo.ai/oss)** |
 | <a href="https://m.do.co/c/0062035db3e4"><img src="https://opensource.nyc3.cdn.digitaloceanspaces.com/attribution/assets/SVG/DO_Logo_icon_blue.svg" width="50" height="50"></a> | **Cloud infrastructure is supported by [DigitalOcean](https://m.do.co/c/0062035db3e4)** |
+| <a href="https://fyrastack.com"><img src="https://fyrastack.com/logo.svg" width="50" height="50"></a> | **Virtual machines provided by [Fyra Stack](https://fyrastack.com/)** |
 
 ## 致谢
 

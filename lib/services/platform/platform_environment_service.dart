@@ -59,18 +59,6 @@ class PlatformEnvironmentService {
     }
   }
 
-  static Future<bool> isInMultiWindowMode() async {
-    if (!Platform.isAndroid) {
-      return false;
-    }
-    try {
-      return await _intentChannel.invokeMethod('checkIfInMultiWindowMode');
-    } on PlatformException catch (e) {
-      KazumiLogger().e("Failed to check multi window mode: '${e.message}'.");
-      return false;
-    }
-  }
-
   static Future<bool> isRunningOnX11() async {
     if (!Platform.isLinux) {
       return false;

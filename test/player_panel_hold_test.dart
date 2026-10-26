@@ -5,11 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kazumi/modules/bangumi/bangumi_item.dart';
-import 'package:kazumi/modules/collect/collect_type.dart';
 import 'package:kazumi/pages/collect/collect_controller.dart';
 import 'package:kazumi/pages/player/player_panel_hold.dart';
 import 'package:kazumi/repositories/collect_crud_repository.dart';
-import 'package:kazumi/repositories/collect_repository.dart';
 
 void main() {
   testWidgets('open menu consumes remote dismiss keys and releases its hold', (
@@ -33,10 +31,16 @@ void main() {
 
     expect(fixture.acquireCount, 4);
     expect(fixture.releaseCount, 4);
-    expect(
-      fixture.visibilityChanges,
-      <bool>[true, false, true, false, true, false, true, false],
-    );
+    expect(fixture.visibilityChanges, <bool>[
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+    ]);
   });
 
   testWidgets('closed menu passes remote dismiss keys to its focus ancestor', (
@@ -57,33 +61,33 @@ void main() {
     expect(fixture.releaseCount, 0);
   });
 
-  testWidgets('system back closes an open menu and passes through when closed',
-      (
-    tester,
-  ) async {
-    final fixture = _MenuFixture(includeClosedSibling: true);
-    addTearDown(fixture.dispose);
-    await tester.pumpWidget(fixture.build());
-    await fixture.openMenu(tester);
+  testWidgets(
+    'system back closes an open menu and passes through when closed',
+    (tester) async {
+      final fixture = _MenuFixture(includeClosedSibling: true);
+      addTearDown(fixture.dispose);
+      await tester.pumpWidget(fixture.build());
+      await fixture.openMenu(tester);
 
-    final openHandled = await fixture.backDispatcher.invokeCallback(
-      SynchronousFuture<bool>(false),
-    );
-    await tester.pump();
+      final openHandled = await fixture.backDispatcher.invokeCallback(
+        SynchronousFuture<bool>(false),
+      );
+      await tester.pump();
 
-    expect(openHandled, isTrue);
-    expect(find.text('First item'), findsNothing);
-    expect(fixture.fallbackBackCount, 0);
-    expect(fixture.acquireCount, 1);
-    expect(fixture.releaseCount, 1);
+      expect(openHandled, isTrue);
+      expect(find.text('First item'), findsNothing);
+      expect(fixture.fallbackBackCount, 0);
+      expect(fixture.acquireCount, 1);
+      expect(fixture.releaseCount, 1);
 
-    final closedHandled = await fixture.backDispatcher.invokeCallback(
-      SynchronousFuture<bool>(false),
-    );
+      final closedHandled = await fixture.backDispatcher.invokeCallback(
+        SynchronousFuture<bool>(false),
+      );
 
-    expect(closedHandled, isTrue);
-    expect(fixture.fallbackBackCount, 1);
-  });
+      expect(closedHandled, isTrue);
+      expect(fixture.fallbackBackCount, 1);
+    },
+  );
 
   testWidgets('remote back and paired system back close only the menu', (
     tester,
@@ -143,7 +147,7 @@ void main() {
 
       await tester.tap(find.byTooltip('未追'));
       await tester.pump();
-      expect(find.text(' 在看'), findsOneWidget);
+      expect(find.text('在看'), findsOneWidget);
       expect(fixture.visibilityChanges, <bool>[true]);
       expect(fixture.acquireCount, 1);
 
@@ -154,7 +158,7 @@ void main() {
       await tester.pump();
 
       expect(systemHandled, isTrue);
-      expect(find.text(' 在看'), findsNothing);
+      expect(find.text('在看'), findsNothing);
       expect(fixture.visibilityChanges, <bool>[true, false]);
       expect(fixture.releaseCount, 1);
       expect(fixture.playerControlExitCount, 0);
@@ -168,7 +172,6 @@ class _CollectMenuFixture {
   final List<bool> visibilityChanges = <bool>[];
   late final CollectController collectController = CollectController(
     _FakeCollectCrudRepository(),
-    _FakeCollectRepository(),
   );
   late final _TestRouterDelegate routerDelegate = _TestRouterDelegate(() {
     fallbackBackCount++;
@@ -221,14 +224,6 @@ class _CollectMenuFixture {
 class _FakeCollectCrudRepository implements ICollectCrudRepository {
   @override
   int getCollectType(int id) => 0;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _FakeCollectRepository implements ICollectRepository {
-  @override
-  Set<int> getBangumiIdsByType(CollectType type) => <int>{};
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -297,10 +292,10 @@ class _MenuFixture {
                   return PlayerPanelHold(onRelease: () => releaseCount++);
                 },
                 onVisibilityChanged: visibilityChanges.add,
-                builder: (context, controller, child) {
+                builder: (context, toggle) {
                   return TextButton(
                     focusNode: anchorButtonFocus,
-                    onPressed: controller.open,
+                    onPressed: toggle,
                     child: const Text('Open menu'),
                   );
                 },
@@ -322,9 +317,9 @@ class _MenuFixture {
                   acquirePlayerPanelHold: () =>
                       PlayerPanelHold(onRelease: () {}),
                   onVisibilityChanged: (_) {},
-                  builder: (context, controller, child) {
+                  builder: (context, toggle) {
                     return TextButton(
-                      onPressed: controller.open,
+                      onPressed: toggle,
                       child: const Text('Open other menu'),
                     );
                   },
@@ -364,23 +359,23 @@ class _MenuFixture {
 
 const _remoteDismissKeys =
     <({LogicalKeyboardKey logical, PhysicalKeyboardKey physical})>[
-  (
-    logical: LogicalKeyboardKey.goBack,
-    physical: PhysicalKeyboardKey.escape,
-  ),
-  (
-    logical: LogicalKeyboardKey.browserBack,
-    physical: PhysicalKeyboardKey.escape,
-  ),
-  (
-    logical: LogicalKeyboardKey.gameButtonB,
-    physical: PhysicalKeyboardKey.escape,
-  ),
-  (
-    logical: LogicalKeyboardKey.escape,
-    physical: PhysicalKeyboardKey.escape,
-  ),
-];
+      (
+        logical: LogicalKeyboardKey.goBack,
+        physical: PhysicalKeyboardKey.escape,
+      ),
+      (
+        logical: LogicalKeyboardKey.browserBack,
+        physical: PhysicalKeyboardKey.escape,
+      ),
+      (
+        logical: LogicalKeyboardKey.gameButtonB,
+        physical: PhysicalKeyboardKey.escape,
+      ),
+      (
+        logical: LogicalKeyboardKey.escape,
+        physical: PhysicalKeyboardKey.escape,
+      ),
+    ];
 
 bool _sendRemoteKey(
   WidgetTester tester,
@@ -388,16 +383,13 @@ bool _sendRemoteKey(
 ) {
   // Unsupported remote keys cannot be synthesized through sendKeyEvent.
   return tester.binding.keyEventManager.keyMessageHandler!(
-    KeyMessage(
-      <KeyEvent>[
-        KeyDownEvent(
-          physicalKey: keyPair.physical,
-          logicalKey: keyPair.logical,
-          timeStamp: Duration.zero,
-        ),
-      ],
-      null,
-    ),
+    KeyMessage(<KeyEvent>[
+      KeyDownEvent(
+        physicalKey: keyPair.physical,
+        logicalKey: keyPair.logical,
+        timeStamp: Duration.zero,
+      ),
+    ], null),
   );
 }
 

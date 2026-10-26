@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kazumi/bean/dialog/dialog_helper.dart';
-import 'package:kazumi/bean/appbar/sys_app_bar.dart';
+import 'package:kazumi/bean/settings/settings_detail_scaffold.dart';
 import 'package:kazumi/bean/widget/directional_floating_action_focus.dart';
 import 'package:kazumi/services/storage/storage.dart';
 import 'package:kazumi/services/network/proxy_utils.dart';
@@ -55,10 +55,8 @@ class _ProxyEditorPageState extends State<ProxyEditorPage> {
 
     await GStorage.putSetting(SettingsKeys.proxyUrl, url);
     await GStorage.putSetting(SettingsKeys.proxyTestUrl, testUrl);
-    // 重置配置状态，等待测试结果
     await GStorage.putSetting(SettingsKeys.proxyConfigured, false);
 
-    // 临时启用代理进行测试
     await GStorage.putSetting(SettingsKeys.proxyEnable, true);
     ProxyManager.applyProxy();
 
@@ -96,8 +94,8 @@ class _ProxyEditorPageState extends State<ProxyEditorPage> {
   Widget build(BuildContext context) {
     return DirectionalFloatingActionFocus(
       floatingActionFocusNode: _floatingActionFocusNode,
-      child: Scaffold(
-        appBar: const SysAppBar(title: Text('代理配置')),
+      child: SettingsDetailScaffold(
+        title: const Text('代理配置'),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Center(

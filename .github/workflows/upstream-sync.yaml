@@ -37,10 +37,11 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          fetch-tags: true
       - name: Fetch upstream main branch
         run: |
           git remote add upstream https://github.com/Predidit/Kazumi.git
-          git fetch --no-tags upstream main
+          git fetch upstream main --tags
         shell: bash
       - name: Merge upstream
         id: merge
@@ -130,31 +131,33 @@ jobs:
         id: metadata
         run: |
           upstream_pubspec="$(git show upstream/main:pubspec.yaml)"
-          version="$(printf '%s\n' "$upstream_pubspec" | sed -n 's/^version: \([0-9][0-9.]*\).*/\1/p' | head -n 1)"
           upstream_build_number="$(printf '%s\n' "$upstream_pubspec" | sed -n 's/^version: [^+]*+\([0-9][0-9]*\).*/\1/p' | head -n 1)"
-          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || [ -z "$upstream_build_number" ]; then
-            echo "Expected a three-part version and numeric build number in upstream pubspec.yaml" >&2
+          if [ -z "$upstream_build_number" ]; then
+            echo "Expected a numeric build number in upstream pubspec.yaml" >&2
+            exit 1
+          fi
+
+          # One Android TV release per upstream release tag. Later commits on
+          # the same tag do not get their own version.
+          version="$(git tag --merged upstream/main --sort=-v:refname \
+            | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
+            | head -n 1 || true)"
+          if [ -z "$version" ]; then
+            echo "No upstream semver release tag is reachable from upstream/main" >&2
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$version" HEAD; then
+            echo "Upstream release $version is not contained in HEAD" >&2
             exit 1
           fi
 
           upstream_sha="$(git rev-parse upstream/main)"
-          release_commit="$(git rev-parse HEAD)"
-          release_short_sha="$(git rev-parse --short=12 HEAD)"
-          release_revision="$(git rev-list --count HEAD)"
-          release_version="${version}.${release_revision}"
-          release_tag="${release_version}-tv.${release_short_sha}"
-
-          version_revision=0
-          while IFS= read -r commit; do
-            commit_version="$(git show "$commit:pubspec.yaml" 2>/dev/null \
-              | sed -n 's/^version: \([0-9][0-9.]*\).*/\1/p' \
-              | head -n 1)"
-            [ "$commit_version" = "$version" ] || break
-            ((version_revision += 1))
-          done < <(git rev-list --first-parent HEAD)
-          if (( version_revision < 1 || version_revision > 999 )); then
-            echo "Version revision $version_revision is outside the supported range 1..999" >&2
-            exit 1
+          release_tag="${version}-tv"
+          release_version="$version"
+          if git show-ref --verify --quiet "refs/tags/${release_tag}"; then
+            release_commit="$(git rev-parse "refs/tags/${release_tag}^{commit}")"
+          else
+            release_commit="$(git rev-parse HEAD)"
           fi
 
           IFS=. read -r major minor patch <<< "$version"
@@ -162,11 +165,12 @@ jobs:
             echo "Version $version exceeds the Android build-number mapping" >&2
             exit 1
           fi
+          # Revision stays at 1 so one upstream release maps to one versionCode.
           android_build_number=$((
             10#$major * 10000000 +
             10#$minor * 100000 +
             10#$patch * 1000 +
-            version_revision
+            1
           ))
           universal_version_code=$((android_build_number * 10 + 9))
           upstream_universal_version_code=$((10#$upstream_build_number * 10 + 9))

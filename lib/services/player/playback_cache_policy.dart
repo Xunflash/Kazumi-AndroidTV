@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:kazumi/services/logging/logger.dart';
 import 'package:kazumi/services/network/metered_network_service.dart';
-import 'package:kazumi/services/storage/storage.dart';
+import 'package:kazumi/services/player/low_memory_mode.dart';
 import 'package:kazumi/utils/async_serial_queue.dart';
 import 'package:kazumi/utils/device.dart';
 import 'package:media_kit/media_kit.dart';
@@ -23,14 +23,15 @@ class PlaybackCacheSizes {
 /// value instead of the media_kit default; [apply] is authoritative.
 class PlaybackCachePolicy {
   PlaybackCachePolicy({
-    required this.isLocalPlayback,
-    required this.currentPlayer,
-    bool Function()? lowMemoryEnabled,
+    required bool Function() isLocalPlayback,
+    required Player? Function() currentPlayer,
     bool Function()? constrainedDevice,
+    LowMemoryMode Function()? lowMemoryMode,
     bool Function()? meteredNetwork,
-  })  : _lowMemoryEnabled = lowMemoryEnabled ??
-            (() => GStorage.getSetting<bool>(SettingsKeys.lowMemoryMode)),
+  })  : _isLocalPlayback = isLocalPlayback,
+        _currentPlayer = currentPlayer,
         _constrainedDevice = constrainedDevice ?? isConstrainedAndroidDevice,
+        _lowMemoryMode = lowMemoryMode ?? (() => LowMemoryMode.current),
         _meteredNetwork =
             meteredNetwork ?? (() => MeteredNetworkService.isMetered);
 
@@ -39,23 +40,25 @@ class PlaybackCachePolicy {
   static const int _constrainedBackBufferSize = 16 * 1024 * 1024;
   static const int _defaultBufferSize = 1500 * 1024 * 1024;
 
-  final bool Function() isLocalPlayback;
-  final Player? Function() currentPlayer;
-  final bool Function() _lowMemoryEnabled;
+  final bool Function() _isLocalPlayback;
+  final Player? Function() _currentPlayer;
   final bool Function() _constrainedDevice;
+  final LowMemoryMode Function() _lowMemoryMode;
   final bool Function() _meteredNetwork;
   final AsyncSerialQueue _writes = AsyncSerialQueue();
 
-  bool _watching = false;
+  StreamSubscription<void>? _settingsSubscription;
 
-  bool get _userEnabled => _lowMemoryEnabled();
-
-  /// Temporary override; local playback is exempt because it costs no data.
-  bool get networkForced =>
-      !_userEnabled && !isLocalPlayback() && _meteredNetwork();
+  bool get networkAutomatic =>
+      _lowMemoryMode() == LowMemoryMode.auto &&
+      !_isLocalPlayback() &&
+      _meteredNetwork();
 
   PlaybackCacheSizes get cacheSizes {
-    if (_userEnabled || networkForced) {
+    if (_lowMemoryMode().isEnabled(
+      isMetered: _meteredNetwork(),
+      isLocalPlayback: _isLocalPlayback(),
+    )) {
       return const PlaybackCacheSizes(
         forwardBytes: _lowMemoryBufferSize,
         backBytes: _lowMemoryBufferSize,
@@ -78,34 +81,30 @@ class PlaybackCachePolicy {
   int get bufferSize => cacheSizes.forwardBytes;
 
   void startWatching() {
-    if (_watching) {
+    if (_settingsSubscription != null) {
       return;
     }
-    _watching = true;
-    MeteredNetworkService.listenable.addListener(_onNetworkChanged);
+    _settingsSubscription = LowMemoryMode.watch().listen((_) => _onChanged());
+    MeteredNetworkService.listenable.addListener(_onChanged);
   }
 
   void stopWatching() {
-    if (!_watching) {
-      return;
-    }
-    _watching = false;
-    MeteredNetworkService.listenable.removeListener(_onNetworkChanged);
+    MeteredNetworkService.listenable.removeListener(_onChanged);
+    unawaited(_settingsSubscription?.cancel());
+    _settingsSubscription = null;
   }
 
-  /// Waits for initialization so the seed cannot land after this write. That
-  /// wait stays outside the queue, where an unresolved one would stall every
-  /// later write.
   Future<void> apply() async {
-    final player = currentPlayer();
+    final player = _currentPlayer();
     if (player == null) {
       return;
     }
     try {
       final pp = player.platform as NativePlayer;
+      // A stale player's initialization must not block its replacement's writes.
       await pp.waitForPlayerInitialization;
       await _writes.run(() async {
-        if (!identical(currentPlayer(), player)) {
+        if (!identical(_currentPlayer(), player)) {
           return;
         }
         final sizes = cacheSizes;
@@ -126,7 +125,7 @@ class PlaybackCachePolicy {
     }
   }
 
-  void _onNetworkChanged() {
+  void _onChanged() {
     unawaited(apply());
   }
 }

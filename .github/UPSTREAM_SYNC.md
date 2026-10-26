@@ -7,10 +7,12 @@ or force-pushes the fork. A merge pushed with `GITHUB_TOKEN` does not recursivel
 start another push workflow; the active sync run invokes the release directly.
 
 When upstream has new commits, the workflow pushes only the merge commit to
-`main`. It derives a stable release identity from the upstream app version and
-the resulting fork commit, such as `2.2.7.1842-tv.a1b2c3d4e5f6`. The numeric
-revision is the commit count of the fork `HEAD`; the suffix is that commit's
-12-character SHA.
+`main`. A Release is created only when upstream has published a new semver tag,
+such as `2.4.2`. The fork tag is that version plus `-tv`, for example
+`2.4.2-tv`. Commits that land between upstream releases update `main` and are
+included in the next tagged release; they do not publish a version of their own.
+If that exact Release and APK already exist, later sync runs leave the tag where
+it is.
 
 The Android-only entry point in `release.yaml` tests and builds that exact
 commit, signs and verifies the APK, and only then creates the tag and Release.
@@ -95,22 +97,21 @@ stable signed release.
 The full multi-platform release path remains available from `release.yaml`.
 Automatic upstream synchronization selects `androidOnly`, because the upstream
 Windows signing service and Apple build outputs are not owned by this fork. A
-manual retry should run `upstream-sync.yaml` again so it recalculates the exact
-tag, commit, app version, and Android build number. Usually no manual retry is
-needed because the next sync run detects and rebuilds a missing APK asset.
+manual retry should run `upstream-sync.yaml` again. It keeps the same tag for
+the current upstream release and rebuilds only when that Release or its APK is
+missing. Usually no manual retry is needed because the next sync run detects a
+missing APK asset.
 
-Android TV builds receive `KAZUMI_APP_VERSION` as
-`upstream-version.fork-commit-count`, allowing updater comparisons between TV
-fixes made during the same upstream version. Android `versionCode` uses a
-separate monotonic mapping:
+Android TV builds receive `KAZUMI_APP_VERSION` as the upstream release version,
+for example `2.4.2`. The GitHub tag is `2.4.2-tv`. Android `versionCode` uses a
+separate monotonic mapping with a fixed revision of 1, so one upstream release
+always maps to the same code:
 
 ```text
-build number = major * 10000000 + minor * 100000 + patch * 1000
-               + same-version first-parent revision
+build number = major * 10000000 + minor * 100000 + patch * 1000 + 1
 universal APK versionCode = build number * 10 + 9
 ```
 
-The workflow accepts three-part versions with `major <= 20`, `minor <= 99`,
-`patch <= 99`, and at most 999 consecutive fork commits for one upstream
-version. It fails before building if the result does not exceed the upstream
-APK version code or would exceed Android's `2,100,000,000` limit.
+The workflow accepts three-part versions with `major <= 20`, `minor <= 99`, and
+`patch <= 99`. It fails before building if the result does not exceed the
+upstream APK version code or would exceed Android's `2,100,000,000` limit.

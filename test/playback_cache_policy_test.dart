@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kazumi/services/player/low_memory_mode.dart';
 import 'package:kazumi/services/player/playback_cache_policy.dart';
 
 void main() {
@@ -13,7 +14,7 @@ void main() {
     return PlaybackCachePolicy(
       isLocalPlayback: () => local,
       currentPlayer: () => null,
-      lowMemoryEnabled: () => lowMemory,
+      lowMemoryMode: () => lowMemory ? LowMemoryMode.always : LowMemoryMode.auto,
       constrainedDevice: () => constrained,
       meteredNetwork: () => metered,
     );

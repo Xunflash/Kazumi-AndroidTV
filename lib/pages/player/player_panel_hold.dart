@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kazumi/bean/widget/collect_button.dart';
+import 'package:kazumi/bean/widget/kazumi_menu.dart';
 import 'package:kazumi/modules/bangumi/bangumi_item.dart';
 import 'package:kazumi/pages/collect/collect_controller.dart';
 
@@ -33,8 +34,53 @@ class PlayerPanelHold {
   }
 }
 
-/// Binds a hover/menu widget lifecycle to a panel hold so callers do not manage
-/// counters or menu identities by hand.
+/// Release focus holds when resizing removes the input but preserves its panel.
+class PlayerPanelHoldFocusRegion extends StatefulWidget {
+  const PlayerPanelHoldFocusRegion({
+    super.key,
+    required this.acquirePlayerPanelHold,
+    required this.child,
+  });
+
+  final PlayerPanelHold Function() acquirePlayerPanelHold;
+  final Widget child;
+
+  @override
+  State<PlayerPanelHoldFocusRegion> createState() =>
+      _PlayerPanelHoldFocusRegionState();
+}
+
+class _PlayerPanelHoldFocusRegionState
+    extends State<PlayerPanelHoldFocusRegion> {
+  PlayerPanelHold? _hold;
+
+  void _onFocusChange(bool focused) {
+    if (focused) {
+      _hold ??= widget.acquirePlayerPanelHold();
+    } else {
+      _hold?.release();
+      _hold = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _hold?.release();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Focus(
+    canRequestFocus: false,
+    onFocusChange: _onFocusChange,
+    child: widget.child,
+  );
+}
+
+/// Release hover holds when their controls unmount.
+///
+/// Focus is tracked separately so a D-pad highlight keeps the panel up without
+/// cancelling an in-progress hover hold.
 class PlayerPanelHoldMouseRegion extends StatefulWidget {
   const PlayerPanelHoldMouseRegion({
     super.key,
@@ -54,24 +100,42 @@ class PlayerPanelHoldMouseRegion extends StatefulWidget {
 
 class _PlayerPanelHoldMouseRegionState
     extends State<PlayerPanelHoldMouseRegion> {
-  PlayerPanelHold? _hold;
+  PlayerPanelHold? _hoverHold;
+  PlayerPanelHold? _focusHold;
 
   @override
   void dispose() {
-    _releaseHold();
+    _releaseHoverHold();
+    _releaseFocusHold();
     super.dispose();
   }
 
-  void _acquireHold() {
-    if (_hold?.isReleased == false) {
+  void _acquireHoverHold() {
+    if (_hoverHold?.isReleased == false) {
       return;
     }
-    _hold = widget.acquirePlayerPanelHold();
+    _hoverHold = widget.acquirePlayerPanelHold();
   }
 
-  void _releaseHold() {
-    _hold?.release();
-    _hold = null;
+  void _releaseHoverHold() {
+    _hoverHold?.release();
+    _hoverHold = null;
+  }
+
+  void _onFocusChange(bool hasFocus) {
+    if (hasFocus) {
+      if (_focusHold?.isReleased == false) {
+        return;
+      }
+      _focusHold = widget.acquirePlayerPanelHold();
+    } else {
+      _releaseFocusHold();
+    }
+  }
+
+  void _releaseFocusHold() {
+    _focusHold?.release();
+    _focusHold = null;
   }
 
   @override
@@ -79,17 +143,11 @@ class _PlayerPanelHoldMouseRegionState
     return Focus(
       canRequestFocus: false,
       skipTraversal: true,
-      onFocusChange: (hasFocus) {
-        if (hasFocus) {
-          _acquireHold();
-        } else {
-          _releaseHold();
-        }
-      },
+      onFocusChange: _onFocusChange,
       child: MouseRegion(
         cursor: widget.cursor,
-        onEnter: (_) => _acquireHold(),
-        onExit: (_) => _releaseHold(),
+        onEnter: (_) => _acquireHoverHold(),
+        onExit: (_) => _releaseHoverHold(),
         child: widget.child,
       ),
     );
@@ -103,18 +161,12 @@ class PlayerPanelHoldMenuAnchor extends StatefulWidget {
     required this.onVisibilityChanged,
     required this.builder,
     required this.menuChildren,
-    this.consumeOutsideTap = false,
   });
 
   final PlayerPanelHold Function() acquirePlayerPanelHold;
   final ValueChanged<bool> onVisibilityChanged;
-  final Widget Function(
-    BuildContext context,
-    MenuController controller,
-    Widget? child,
-  ) builder;
+  final KazumiMenuBuilder builder;
   final List<Widget> menuChildren;
-  final bool consumeOutsideTap;
 
   @override
   State<PlayerPanelHoldMenuAnchor> createState() =>
@@ -142,7 +194,9 @@ class _PlayerPanelHoldMenuAnchorState extends State<PlayerPanelHoldMenuAnchor> {
 
   void _closeMenuForBack() {
     _consumePairedSystemBack = true;
-    _menuController.close();
+    if (_menuController.isOpen) {
+      _menuController.close();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _consumePairedSystemBack = false;
@@ -205,11 +259,11 @@ class _PlayerPanelHoldMenuAnchorState extends State<PlayerPanelHoldMenuAnchor> {
   Widget build(BuildContext context) {
     return BackButtonListener(
       // Rebuilding on open gives this listener priority over closed sibling
-      // menu anchors without replacing the MenuAnchor subtree.
+      // menu anchors without replacing the menu subtree.
       onBackButtonPressed: () => _handleSystemBackButton(),
-      child: MenuAnchor(
+      child: KazumiMenuButton(
         controller: _menuController,
-        consumeOutsideTap: widget.consumeOutsideTap,
+        animated: false,
         onOpen: _handleOpen,
         onClose: _handleClose,
         builder: widget.builder,
@@ -224,14 +278,14 @@ class PlayerPanelHoldCollectButton extends StatefulWidget {
     super.key,
     required this.acquirePlayerPanelHold,
     required this.bangumiItem,
-    required this.onVisibilityChanged,
+    this.onVisibilityChanged,
     this.color = Colors.white,
     this.collectController,
   });
 
   final PlayerPanelHold Function() acquirePlayerPanelHold;
   final BangumiItem bangumiItem;
-  final ValueChanged<bool> onVisibilityChanged;
+  final ValueChanged<bool>? onVisibilityChanged;
   final Color color;
   final CollectController? collectController;
 
@@ -262,7 +316,9 @@ class _PlayerPanelHoldCollectButtonState
 
   void _closeMenuForBack() {
     _consumePairedSystemBack = true;
-    _menuController.close();
+    if (_menuController.isOpen) {
+      _menuController.close();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _consumePairedSystemBack = false;
@@ -313,7 +369,7 @@ class _PlayerPanelHoldCollectButtonState
     });
     FocusManager.instance.addEarlyKeyEventHandler(_handleMenuKeyEvent);
     _keyHandlerRegistered = true;
-    widget.onVisibilityChanged(true);
+    widget.onVisibilityChanged?.call(true);
     _acquireHold();
   }
 
@@ -324,7 +380,7 @@ class _PlayerPanelHoldCollectButtonState
     }
     if (_isOpen) {
       _isOpen = false;
-      widget.onVisibilityChanged(false);
+      widget.onVisibilityChanged?.call(false);
     }
     _releaseHold();
   }
