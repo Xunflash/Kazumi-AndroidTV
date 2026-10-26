@@ -153,6 +153,9 @@
               --dart-define=KAZUMI_KEY=$KAZUMI_KEY
               --dart-define=KAZUMI_GITHUB_REPOSITORY=${{ github.repository }}
             shell: bash
+          - name: Use Android TV libmpv without Vulkan
+            run: bash .github/scripts/replace-tv-libmpv.sh build/app/outputs/flutter-apk/app-release.apk
+            shell: bash
           - name: Verify Android TV APK
             run: bash .github/scripts/verify-android-tv-apk.sh build/app/outputs/flutter-apk/app-release.apk
             shell: bash

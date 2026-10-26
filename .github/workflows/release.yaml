@@ -186,6 +186,9 @@
               fi
               flutter build "${build_args[@]}"
             shell: bash
+          - name: Use Android TV libmpv without Vulkan
+            run: bash .github/scripts/replace-tv-libmpv.sh build/app/outputs/flutter-apk/app-release.apk
+            shell: bash
           - name: Verify Android TV APK
             run: bash .github/scripts/verify-android-tv-apk.sh build/app/outputs/flutter-apk/app-release.apk
             shell: bash
