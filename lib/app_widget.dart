@@ -8,6 +8,8 @@ import 'package:kazumi/services/storage/storage.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:kazumi/services/logging/logger.dart';
 import 'package:kazumi/services/network/metered_network_service.dart';
+import 'package:kazumi/services/platform/app_exit.dart';
+import 'package:kazumi/services/platform/tray_service.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:kazumi/bean/dialog/dialog_helper.dart';
 import 'package:kazumi/bean/dialog/exit_confirmation_dialog.dart';
@@ -43,7 +45,7 @@ class _AppWidgetState extends State<AppWidget>
   Future<void> _initializePlatformIntegrations() async {
     if (isDesktop()) {
       await windowManager.setPreventClose(true);
-      await _handleTray();
+      await TrayService.initialize();
     }
     await _configurePreferredDisplayMode();
   }
@@ -242,7 +244,7 @@ class _AppWidgetState extends State<AppWidget>
       case 'show_window':
         windowManager.show();
       case 'exit':
-        exit(0);
+        AppExit.quit();
     }
   }
 
@@ -278,7 +280,7 @@ class _AppWidgetState extends State<AppWidget>
       if (!mounted) return;
       switch (action) {
         case ExitDialogAction.exit:
-          exit(0);
+          await AppExit.quit();
         case ExitDialogAction.minimizeToTray:
           await windowManager.hide();
       }
@@ -313,30 +315,6 @@ class _AppWidgetState extends State<AppWidget>
     );
 
     _syncWindowsTitleBarBrightness(themeProvider);
-  }
-
-  Future<void> _handleTray() async {
-    if (Platform.isWindows) {
-      await trayManager.setIcon('assets/images/logo/logo_lanczos.ico');
-    } else if (Platform.environment.containsKey('FLATPAK_ID') ||
-        Platform.environment.containsKey('SNAP')) {
-      await trayManager.setIcon('io.github.Predidit.Kazumi');
-    } else {
-      await trayManager.setIcon('assets/images/logo/logo_rounded.png');
-    }
-
-    if (!Platform.isLinux) {
-      await trayManager.setToolTip('Kazumi TV');
-    }
-
-    Menu trayMenu = Menu(
-      items: [
-        MenuItem(key: 'show_window', label: '显示窗口'),
-        MenuItem.separator(),
-        MenuItem(key: 'exit', label: '退出 Kazumi TV'),
-      ],
-    );
-    await trayManager.setContextMenu(trayMenu);
   }
 
   @override

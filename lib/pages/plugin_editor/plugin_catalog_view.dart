@@ -170,9 +170,11 @@ class _PluginCatalogViewState extends State<PluginCatalogView> {
     final theme = Theme.of(context);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (!widget._onboarding) ...[
-        const RulePageIntro(
+        RulePageIntro(
           title: '发现更多来源',
-          description: '浏览社区规则，为你的番剧搜索添加更多选择。',
+          description: _controller.ruleRepository.isNotEmpty
+              ? '自定义仓库（${_controller.ruleRepository}）'
+              : '默认仓库（${RulesMirror.current.label}）',
           icon: Icons.travel_explore_rounded,
         ),
         const SizedBox(height: 20),
@@ -243,18 +245,23 @@ class _PluginCatalogViewState extends State<PluginCatalogView> {
           child: Center(child: LoadingIndicator()));
     }
     if (_loadFailed && _controller.pluginHTTPList.isEmpty) {
+      // Mirrors only apply to the official repository.
+      final customRepository = _controller.ruleRepository.isNotEmpty;
       return GeneralErrorWidget(
         title: '无法访问规则仓库',
-        errMsg: '请检查网络连接，或调整加速设置后重试。\n规则仓库加速：${RulesMirror.current.label}',
+        errMsg: customRepository
+            ? '请检查自定义仓库地址和网络连接后重试。'
+            : '请检查网络连接，或调整加速设置后重试。\n规则仓库加速：${RulesMirror.current.label}',
         icon: Icons.cloud_off_rounded,
         onRetry: _refresh,
         retryText: '重新加载',
         actions: [
-          StateActionButton.tonal(
-            onPressed: _selectMirrorAndRefresh,
-            icon: Icons.tune_rounded,
-            text: '切换加速',
-          ),
+          if (!customRepository)
+            StateActionButton.tonal(
+              onPressed: _selectMirrorAndRefresh,
+              icon: Icons.tune_rounded,
+              text: '切换加速',
+            ),
         ],
       );
     }
