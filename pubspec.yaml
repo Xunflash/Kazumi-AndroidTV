@@ -1,11 +1,11 @@
 name: kazumi
 description: "Kazumi TV: an unofficial Android TV adaptation with 32-bit ARM and remote-control support."
 publish_to: "none"
-version: 2.4.4+20404
+version: 2.4.5+20405
 
 environment:
   sdk: ">=3.10.0 <4.0.0"
-  flutter: 3.50.1
+  flutter: ">=3.50.1"
 
 dependencies:
   flutter:
