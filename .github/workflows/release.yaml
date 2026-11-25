@@ -71,7 +71,7 @@
       KAZUMI_ANDROID_BUILD_NUMBER: ${{ inputs.androidBuildNumber }}
       RELEASE_TAG: ${{ inputs.releaseTag || github.ref_name }}
       RELEASE_COMMIT: ${{ inputs.releaseCommit || inputs.releaseTag || github.ref_name }}
-      FLUTTER_MASTER_COMMIT: 27f65c6da2dd58531ea3a3abee5af13c72a6621f
+      FLUTTER_MASTER_COMMIT: 06f1c24345a29b26fc388ca8072f2b03a36a4d82
 
     jobs:
       flutter-test:
@@ -221,7 +221,8 @@
           - name: Set up Flutter
             uses: subosito/flutter-action@v2.16.0
             with:
-              channel: stable
+              channel: master
+              flutter-version: ${{ env.FLUTTER_MASTER_COMMIT }}
           - name: Set up Java
             uses: actions/setup-java@v4
             with:
